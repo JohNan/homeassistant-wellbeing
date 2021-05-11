@@ -1,0 +1,2 @@
+homeassistant
+aiohttp==3.7.4

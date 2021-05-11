@@ -1,0 +1,10 @@
+{
+  "domain": "wellbeing",
+  "name": "Wellbeing",
+  "documentation": "https://github.com/JohNan/wellbeing",
+  "issue_tracker": "https://github.com/JohNan/wellbeing/issues",
+  "dependencies": [],
+  "config_flow": true,
+  "codeowners": ["@JohNan"],
+  "requirements": []
+}
