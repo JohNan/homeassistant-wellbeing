@@ -75,6 +75,7 @@ class Appliance:
     serialNumber: str
     brand: str
     device: str
+    firmware: str
     entities: []
 
     def __init__(self, name, pnc_id, model) -> None:
@@ -107,6 +108,18 @@ class Appliance:
                 unit=CONCENTRATION_PARTS_PER_BILLION
             ),
             ApplianceSensor(
+                name="PM1",
+                attr='PM1'
+            ),
+            ApplianceSensor(
+                name="PM2.5",
+                attr='PM2_5'
+            ),
+            ApplianceSensor(
+                name="PM10",
+                attr='PM10'
+            ),
+            ApplianceSensor(
                 name="Humidity",
                 attr='Humidity',
                 unit=PERCENTAGE,
@@ -137,6 +150,10 @@ class Appliance:
             ApplianceBinary(
                 name="Status",
                 attr='status'
+            ),
+            ApplianceBinary(
+                name="Safety Lock",
+                attr='SafetyLock'
             )
         ]
 
@@ -148,6 +165,7 @@ class Appliance:
         )
 
     def setup(self, data):
+        self.firmware = data.get('FrmVer_NIU')
         self.entities = [
             entity.setup(data)
             for entity in Appliance._create_entities()

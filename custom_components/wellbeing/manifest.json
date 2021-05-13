@@ -1,10 +1,12 @@
 {
   "domain": "wellbeing",
   "name": "Wellbeing",
+  "iot_class": "cloud_polling",
   "documentation": "https://github.com/JohNan/homeassistant-wellbeing",
   "issue_tracker": "https://github.com/JohNan/homeassistant-wellbeing/issues",
   "dependencies": [],
   "config_flow": true,
   "codeowners": ["@JohNan"],
-  "requirements": []
+  "requirements": [],
+  "version": "v0.0.0"
 }

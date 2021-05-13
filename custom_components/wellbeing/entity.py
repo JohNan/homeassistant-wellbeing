@@ -43,6 +43,7 @@ class WellbeingEntity(CoordinatorEntity):
             "name": self.get_appliance.name,
             "model": self.get_appliance.model,
             "manufacturer": self.get_appliance.brand,
+            "sw_version": self.get_appliance.firmware,
         }
 
     @property
