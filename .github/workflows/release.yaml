@@ -30,6 +30,6 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: ./custom_components/wellbeing/wellbeing.zip
-          asset_name: volkswagencarnet.zip
+          asset_name: wellbeing.zip
           tag: ${{ github.ref }}
           overwrite: true
