@@ -125,8 +125,7 @@ class Appliance:
             ),
             ApplianceSensor(
                 name='State',
-                attr='State',
-                unit=PERCENTAGE
+                attr='State'
             ),
             ApplianceBinary(
                 name='PM Sensor State',
