@@ -24,5 +24,6 @@ jobs:
       - name: HACS Validation
         uses: hacs/action@main
         with:
+          ignore: brands
           category: integration
           comment: False
