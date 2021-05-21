@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 import asyncio
 import logging
 import socket
+from enum import Enum
+from typing import Union
 
 import aiohttp
 import async_timeout
@@ -16,15 +18,30 @@ from homeassistant.const import TEMP_CELSIUS, PERCENTAGE, DEVICE_CLASS_TEMPERATU
 
 TIMEOUT = 10
 RETRIES = 3
+BASE_URL = "https://api.delta.electrolux.com/api"
 TOKEN_URL = "https://electrolux-wellbeing-client.vercel.app/api/mu52m5PR9X"
-LOGIN_URL = "https://api.delta.electrolux.com/api/Users/Login"
-APPLIANCES_URL = "https://api.delta.electrolux.com/api/Domains/Appliances"
-APPLIANCE_INFO_URL = "https://api.delta.electrolux.com/api/AppliancesInfo"
-APPLIANCE_DATA_URL = "https://api.delta.electrolux.com/api/Appliances"
+LOGIN_URL = f"{BASE_URL}/Users/Login"
+APPLIANCES_URL = f"{BASE_URL}/Domains/Appliances"
+APPLIANCE_INFO_URL = f"{BASE_URL}/AppliancesInfo"
+APPLIANCE_DATA_URL = f"{BASE_URL}/Appliances"
+
+FILTER_TYPE = {
+    48: "Particle filter",
+    64: "Breeze 360 filter",
+    192: "Odor filter",
+    0: "Filter"
+}
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
 HEADERS = {"Content-type": "application/json; charset=UTF-8"}
+
+
+class Mode(str, Enum):
+    OFF = "PowerOff"
+    AUTO = "Auto"
+    MANUAL = "Manual"
+    UNDEFINED = "Undefined"
 
 
 class ApplianceEntity:
@@ -34,15 +51,18 @@ class ApplianceEntity:
         self.attr = attr
         self.name = name
         self.device_class = device_class
-        self._data = None
+        self._state = None
 
     def setup(self, data):
-        self._data = data
+        self._state = data[self.attr]
         return self
+
+    def clear_state(self):
+        self._state = None
 
     @property
     def state(self):
-        return self._data[self.attr]
+        return self._state
 
 
 class ApplianceSensor(ApplianceEntity):
@@ -68,7 +88,7 @@ class ApplianceBinary(ApplianceEntity):
 
     @property
     def state(self):
-        return self._data[self.attr] in ['enabled', True, 'Connected']
+        return self._state in ['enabled', True, 'Connected']
 
 
 class Appliance:
@@ -76,6 +96,7 @@ class Appliance:
     brand: str
     device: str
     firmware: str
+    mode: Mode
     entities: []
 
     def __init__(self, name, pnc_id, model) -> None:
@@ -84,8 +105,50 @@ class Appliance:
         self.name = name
 
     @staticmethod
-    def _create_entities():
-        return [
+    def _create_entities(data):
+        a7_entities = [
+            ApplianceSensor(
+                name="eCO2",
+                attr='ECO2',
+                unit=CONCENTRATION_PARTS_PER_MILLION,
+                device_class=DEVICE_CLASS_CO2
+            ),
+            ApplianceSensor(
+                name=f"{FILTER_TYPE[data.get('FilterType_1', 0)]} Life",
+                attr='FilterLife_1',
+                unit=PERCENTAGE
+            ),
+            ApplianceSensor(
+                name=f"{FILTER_TYPE[data.get('FilterType_2', 0)]} Life",
+                attr='FilterLife_2',
+                unit=PERCENTAGE
+            ),
+            ApplianceSensor(
+                name='State',
+                attr='State',
+                unit=PERCENTAGE
+            ),
+            ApplianceBinary(
+                name='PM Sensor State',
+                attr='PMSensState'
+            )
+        ]
+
+        a9_entities = [
+            ApplianceSensor(
+                name=f"{FILTER_TYPE[data.get('FilterType', 0)]} Life",
+                attr='FilterLife',
+                unit=PERCENTAGE
+            ),
+            ApplianceSensor(
+                name="CO2",
+                attr='CO2',
+                unit=CONCENTRATION_PARTS_PER_MILLION,
+                device_class=DEVICE_CLASS_CO2
+            ),
+        ]
+
+        common_entities = [
             ApplianceFan(
                 name="Fan Speed",
                 attr='Fanspeed'
@@ -95,12 +158,6 @@ class Appliance:
                 attr='Temp',
                 unit=TEMP_CELSIUS,
                 device_class=DEVICE_CLASS_TEMPERATURE
-            ),
-            ApplianceSensor(
-                name="CO2",
-                attr='CO2',
-                unit=CONCENTRATION_PARTS_PER_MILLION,
-                device_class=DEVICE_CLASS_CO2
             ),
             ApplianceSensor(
                 name="TVOC",
@@ -124,11 +181,6 @@ class Appliance:
                 attr='Humidity',
                 unit=PERCENTAGE,
                 device_class=DEVICE_CLASS_HUMIDITY
-            ),
-            ApplianceSensor(
-                name="Filter Life",
-                attr='FilterLife',
-                unit=PERCENTAGE
             ),
             ApplianceSensor(
                 name="Mode",
@@ -157,6 +209,8 @@ class Appliance:
             )
         ]
 
+        return common_entities + a9_entities + a7_entities
+
     def get_entity(self, entity_type, entity_attr):
         return next(
             entity
@@ -164,11 +218,15 @@ class Appliance:
             if entity.attr == entity_attr and entity.entity_type == entity_type
         )
 
+    def clear_mode(self):
+        self.mode = Mode.UNDEFINED
+
     def setup(self, data):
         self.firmware = data.get('FrmVer_NIU')
+        self.mode = Mode(data.get('Workmode'))
         self.entities = [
             entity.setup(data)
-            for entity in Appliance._create_entities()
+            for entity in Appliance._create_entities(data) if entity.attr in data
         ]
 
 
@@ -181,6 +239,7 @@ class Appliances:
 
 
 class WellbeingApiClient:
+
     def __init__(self, username: str, password: str, session: aiohttp.ClientSession) -> None:
         """Sample API Client."""
         self._username = username
@@ -188,7 +247,8 @@ class WellbeingApiClient:
         self._session = session
         self._access_token = None
         self._token = None
-        self._current_token = None
+        self._current_access_token = None
+        self._token_expires = datetime.now()
         self.appliances = None
 
     async def _get_token(self) -> dict:
@@ -230,25 +290,30 @@ class WellbeingApiClient:
         return await self.api_wrapper("get", f"{APPLIANCE_DATA_URL}/{pnc_id}", headers=headers)
 
     async def async_login(self) -> bool:
-        if self._access_token is None:
-            self._access_token = await self._get_token()
+        if self._current_access_token is not None and self._token_expires > datetime.now():
+            return True
 
-        if 'accessToken' not in self._access_token:
+        _LOGGER.debug("Current token is not set or expired")
+
+        self._token = None
+        self._current_access_token = None
+        access_token = await self._get_token()
+
+        if 'accessToken' not in access_token:
             self._access_token = None
-            self._current_token = None
-            _LOGGER.error("Unable to get token")
+            self._current_access_token = None
+            _LOGGER.debug("AccessToken 1 is missing")
             return False
 
-        if self._token is None or datetime.now() + timedelta(seconds=self._token['expiresIn']) > datetime.now():
-            self._token = await self._login(self._access_token['accessToken'])
+        token = await self._login(access_token['accessToken'])
 
-        if 'accessToken' not in self._token:
-            self._token = None
-            self._current_token = None
-            _LOGGER.error("Unable to login")
+        if 'accessToken' not in token:
+            self._current_access_token = None
+            _LOGGER.debug("AccessToken 2 is missing")
             return False
 
-        self._current_token = self._token['accessToken']
+        self._token_expires = datetime.now() + timedelta(seconds=token['expiresIn'])
+        self._current_access_token = token['accessToken']
         return True
 
     async def async_get_data(self) -> Appliances:
@@ -257,10 +322,10 @@ class WellbeingApiClient:
         while not await self.async_login() and n < RETRIES:
             n += 1
 
-        if self._current_token is None:
+        if self._current_access_token is None:
             raise Exception("Unable to login")
 
-        access_token = self._current_token
+        access_token = self._current_access_token
         appliances = await self._get_appliances(access_token)
         _LOGGER.info(f"Fetched data: {appliances}")
 
@@ -286,10 +351,29 @@ class WellbeingApiClient:
 
         return Appliances(found_appliances)
 
-    async def async_set_title(self, value: str) -> None:
+    async def set_fan_speed(self, pnc_id: str, level: int):
+        data = {
+            "Fanspeed": level
+        }
+        result = await self._send_command(self._current_access_token, pnc_id, data)
+        _LOGGER.debug(f"Set Fan Speed: {result}")
+
+    async def set_work_mode(self, pnc_id: str, mode: Mode):
+        data = {
+            "WorkMode": mode
+        }
+        result = await self._send_command(self._current_access_token, pnc_id, data)
+        _LOGGER.debug(f"Set Fan Speed: {result}")
+
+    async def _send_command(self, access_token: str, pnc_id: str, command: dict) -> None:
         """Get data from the API."""
-        url = "https://jsonplaceholder.typicode.com/posts/1"
-        await self.api_wrapper("patch", url, data={"title": value}, headers=HEADERS)
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+
+        await self.api_wrapper("put", f"{APPLIANCE_DATA_URL}/{pnc_id}/Commands", data=command, headers=headers)
 
     async def api_wrapper(self, method: str, url: str, data: dict = {}, headers: dict = {}) -> dict:
         """Get information from the API."""
@@ -300,7 +384,8 @@ class WellbeingApiClient:
                     return await response.json()
 
                 elif method == "put":
-                    await self._session.put(url, headers=headers, json=data)
+                    response = await self._session.put(url, headers=headers, json=data)
+                    return await response.json()
 
                 elif method == "patch":
                     await self._session.patch(url, headers=headers, json=data)
@@ -330,4 +415,3 @@ class WellbeingApiClient:
             )
         except Exception as exception:  # pylint: disable=broad-except
             _LOGGER.error("Something really wrong happened! - %s", exception)
-
