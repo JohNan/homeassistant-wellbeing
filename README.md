@@ -11,7 +11,8 @@ A custom component designed for [Home Assistant](https://www.home-assistant.io) 
 
 ### Supported and tested devices
 
-- Pure A9 Air Purifier 
+- Pure A9 Air Purifier
+- Well A7 Air Purifier
 
 ### Install with HACS (recommended)
 Add the url to the repository as a custom integration.
