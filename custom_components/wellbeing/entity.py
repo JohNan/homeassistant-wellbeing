@@ -1,17 +1,17 @@
 """WellbeingEntity class"""
 from homeassistant.components.sensor import ENTITY_ID_FORMAT
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from . import WellbeingDataUpdateCoordinator
 from .api import Appliance, ApplianceEntity
 
-from .const import ATTRIBUTION, DEFAULT_NAME
+from .const import DEFAULT_NAME
 from .const import DOMAIN
-from .const import NAME
-from .const import VERSION
 
 
 class WellbeingEntity(CoordinatorEntity):
-    def __init__(self, coordinator, config_entry, pnc_id, entity_type, entity_attr):
+    def __init__(self, coordinator: WellbeingDataUpdateCoordinator, config_entry, pnc_id, entity_type, entity_attr):
         super().__init__(coordinator)
+        self.api = coordinator.api
         self.entity_attr = entity_attr
         self.entity_type = entity_type
         self.config_entry = config_entry
@@ -50,7 +50,6 @@ class WellbeingEntity(CoordinatorEntity):
     def device_state_attributes(self):
         """Return the state attributes."""
         return {
-            "id": str(self.pnc_id),
             "integration": DOMAIN,
         }
 
