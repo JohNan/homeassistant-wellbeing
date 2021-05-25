@@ -228,6 +228,21 @@ class Appliance:
             for entity in Appliance._create_entities(data) if entity.attr in data
         ]
 
+    @property
+    def ordered_named_fan_speeds(self):
+        if self.model == "WELLA7":
+            return ["0", "1", "2", "3", "4", "5"]
+        if self.model == "PUREA9":
+            return ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+
+    @property
+    def speed_range(self):
+        if self.model == "WELLA7":
+            return 0, 5
+        if self.model == "PUREA9":
+            return 0, 9
+
+
 
 class Appliances:
     def __init__(self, appliances) -> None:
@@ -319,6 +334,7 @@ class WellbeingApiClient:
         """Get data from the API."""
         n = 0
         while not await self.async_login() and n < RETRIES:
+            _LOGGER.debug(f"Re-trying login. Attempt {n+1} / {RETRIES}")
             n += 1
 
         if self._current_access_token is None:

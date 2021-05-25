@@ -15,8 +15,6 @@ from .const import SENSOR
 from .entity import WellbeingEntity
 
 SUPPORTED_FEATURES = SUPPORT_SET_SPEED | SUPPORT_PRESET_MODE
-SPEED_RANGE = (0, 9)
-ORDERED_NAMED_FAN_SPEEDS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
 PRESET_MODES = [
     Mode.OFF,
@@ -49,6 +47,14 @@ class WellbeingFan(WellbeingEntity, FanEntity):
         self._speed = self.get_entity.state
 
     @property
+    def _speed_range(self):
+        return self.get_appliance.speed_range
+
+    @property
+    def _ordered_named_fan_speeds(self):
+        return self.get_appliance.ordered_named_fan_speeds
+
+    @property
     def name(self):
         """Return the name of the sensor."""
         return self.get_entity.name
@@ -59,12 +65,12 @@ class WellbeingFan(WellbeingEntity, FanEntity):
 
     @property
     def speed_list(self) -> list:
-        return list(range(SPEED_RANGE[0], SPEED_RANGE[1]+1))
+        return list(range(self._speed_range[0], self._speed_range[1]+1))
 
     @property
     def speed_count(self) -> int:
         """Return the number of speeds the fan supports."""
-        return int_states_in_range(SPEED_RANGE)
+        return int_states_in_range(self._speed_range)
 
     @property
     def percentage(self):
@@ -73,11 +79,11 @@ class WellbeingFan(WellbeingEntity, FanEntity):
         if speed == 0:
             return 0
 
-        return ranged_value_to_percentage(SPEED_RANGE, speed)
+        return ranged_value_to_percentage(self._speed_range, speed)
 
     async def async_set_percentage(self, percentage: int) -> None:
         """Set the speed percentage of the fan."""
-        self._speed = percentage_to_ranged_value(SPEED_RANGE, percentage)
+        self._speed = percentage_to_ranged_value(self._speed_range, percentage)
         self.get_entity.clear_state()
         self.async_write_ha_state()
 
@@ -90,7 +96,7 @@ class WellbeingFan(WellbeingEntity, FanEntity):
         if not is_manual:
             await self.async_set_preset_mode(Mode.MANUAL)
 
-        await self.api.set_fan_speed(self.pnc_id, int(percentage_to_ordered_list_item(ORDERED_NAMED_FAN_SPEEDS, percentage)))
+        await self.api.set_fan_speed(self.pnc_id, int(percentage_to_ordered_list_item(self._ordered_named_fan_speeds, percentage)))
 
         if is_manual:
             await asyncio.sleep(10)
@@ -128,13 +134,13 @@ class WellbeingFan(WellbeingEntity, FanEntity):
     async def async_turn_on(self, speed: str = None, percentage: int = None,
                             preset_mode: str = None, **kwargs) -> None:
         self._preset_mode = Mode(preset_mode or Mode.AUTO.value)
-        self._speed = percentage_to_ranged_value(SPEED_RANGE, percentage or 10)
+        self._speed = percentage_to_ranged_value(self._speed_range, percentage or 10)
         self.get_appliance.clear_mode()
         self.get_entity.clear_state()
         self.async_write_ha_state()
 
         await self.api.set_work_mode(self.pnc_id, self._preset_mode)
-        await self.api.set_fan_speed(self.pnc_id, int(percentage_to_ordered_list_item(ORDERED_NAMED_FAN_SPEEDS, percentage or 10)))
+        await self.api.set_fan_speed(self.pnc_id, int(percentage_to_ordered_list_item(self._ordered_named_fan_speeds, percentage or 10)))
         await asyncio.sleep(10)
         await self.coordinator.async_request_refresh()
 

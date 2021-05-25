@@ -16,12 +16,10 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.helpers.update_coordinator import UpdateFailed
 from .api import WellbeingApiClient
-from .const import CONF_PASSWORD
+from .const import CONF_PASSWORD, CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
 from .const import CONF_USERNAME
 from .const import DOMAIN
 from .const import PLATFORMS
-
-SCAN_INTERVAL = timedelta(seconds=30)
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
@@ -36,13 +34,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     if hass.data.get(DOMAIN) is None:
         hass.data.setdefault(DOMAIN, {})
 
+    if entry.options.get(CONF_SCAN_INTERVAL):
+        update_interval = timedelta(seconds=entry.options[CONF_SCAN_INTERVAL])
+    else:
+        update_interval = timedelta(seconds=DEFAULT_SCAN_INTERVAL)
+
     username = entry.data.get(CONF_USERNAME)
     password = entry.data.get(CONF_PASSWORD)
 
     session = async_get_clientsession(hass)
     client = WellbeingApiClient(username, password, session)
 
-    coordinator = WellbeingDataUpdateCoordinator(hass, client=client)
+    coordinator = WellbeingDataUpdateCoordinator(hass, client=client, update_interval=update_interval)
     if not await coordinator.async_login():
         raise ConfigEntryAuthFailed
 
@@ -53,6 +56,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
+    coordinator.platforms.extend(PLATFORMS)
     hass.config_entries.async_setup_platforms(entry, PLATFORMS)
 
     entry.add_update_listener(async_reload_entry)
@@ -62,16 +66,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 class WellbeingDataUpdateCoordinator(DataUpdateCoordinator):
     """Class to manage fetching data from the API."""
 
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        client: WellbeingApiClient,
-    ) -> None:
+    def __init__(self,hass: HomeAssistant, client: WellbeingApiClient, update_interval: timedelta) -> None:
         """Initialize."""
         self.api = client
         self.platforms = []
 
-        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=SCAN_INTERVAL)
+        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=update_interval)
 
     async def async_login(self) -> bool:
         """Login to Verisure."""
