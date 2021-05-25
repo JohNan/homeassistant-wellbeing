@@ -4,8 +4,8 @@ from typing import Any
 import asyncio
 
 from homeassistant.components.fan import FanEntity, SUPPORT_SET_SPEED, SUPPORT_PRESET_MODE
-from homeassistant.util.percentage import ranged_value_to_percentage, int_states_in_range, \
-    percentage_to_ordered_list_item, percentage_to_ranged_value, ordered_list_item_to_percentage
+from homeassistant.util.percentage import percentage_to_ordered_list_item, \
+    percentage_to_ranged_value, ordered_list_item_to_percentage
 from . import WellbeingDataUpdateCoordinator
 from .api import Mode
 from .const import DEFAULT_NAME, FAN
