@@ -28,6 +28,8 @@ APPLIANCE_DATA_URL = f"{BASE_URL}/Appliances"
 FILTER_TYPE = {
     48: "Particle filter",
     64: "Breeze 360 filter",
+    96: "Breeze 360 filter",
+    99: "Breeze 360 filter",
     192: "Odor filter",
     0: "Filter"
 }
@@ -135,7 +137,7 @@ class Appliance:
 
         a9_entities = [
             ApplianceSensor(
-                name=f"{FILTER_TYPE[data.get('FilterType', 0)]} Life",
+                name=f"{FILTER_TYPE.get(data.get('FilterType', 0), 'Filter')} Life",
                 attr='FilterLife',
                 unit=PERCENTAGE
             ),
@@ -235,6 +237,8 @@ class Appliance:
         if self.model == "PUREA9":
             return ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
+        return []
+
     @property
     def speed_range(self):
         if self.model == "WELLA7":
@@ -242,6 +246,7 @@ class Appliance:
         if self.model == "PUREA9":
             return 0, 9
 
+        return 0
 
 
 class Appliances:
