@@ -4,8 +4,8 @@ from typing import Any
 import asyncio
 
 from homeassistant.components.fan import FanEntity, SUPPORT_SET_SPEED, SUPPORT_PRESET_MODE
-from homeassistant.util.percentage import ranged_value_to_percentage, int_states_in_range, \
-    percentage_to_ordered_list_item, percentage_to_ranged_value
+from homeassistant.util.percentage import percentage_to_ordered_list_item, \
+    percentage_to_ranged_value, ordered_list_item_to_percentage
 from . import WellbeingDataUpdateCoordinator
 from .api import Mode
 from .const import DEFAULT_NAME, FAN
@@ -22,7 +22,6 @@ PRESET_MODES = [
     Mode.MANUAL
 ]
 
-
 async def async_setup_entry(hass, entry, async_add_devices):
     """Setup sensor platform."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
@@ -36,7 +35,6 @@ async def async_setup_entry(hass, entry, async_add_devices):
                     for entity in appliance.entities if entity.entity_type == FAN
                 ]
             )
-
 
 class WellbeingFan(WellbeingEntity, FanEntity):
     """wellbeing Sensor class."""
@@ -65,13 +63,13 @@ class WellbeingFan(WellbeingEntity, FanEntity):
 
     @property
     def speed_list(self) -> list:
-        return list(range(self._speed_range[0], self._speed_range[1]+1))
+        return list(range(self._speed_range[0]+1, self._speed_range[1]+1))
 
     @property
     def speed_count(self) -> int:
         """Return the number of speeds the fan supports."""
-        return int_states_in_range(self._speed_range)
-
+        return len(self.speed_list)
+    
     @property
     def percentage(self):
         """Return the current speed percentage."""
@@ -79,7 +77,7 @@ class WellbeingFan(WellbeingEntity, FanEntity):
         if speed == 0:
             return 0
 
-        return ranged_value_to_percentage(self._speed_range, speed)
+        return ordered_list_item_to_percentage(self.speed_list, speed)
 
     async def async_set_percentage(self, percentage: int) -> None:
         """Set the speed percentage of the fan."""
@@ -155,5 +153,3 @@ class WellbeingFan(WellbeingEntity, FanEntity):
         await self.api.set_work_mode(self.pnc_id, Mode.OFF)
         await asyncio.sleep(10)
         await self.coordinator.async_request_refresh()
-
-
