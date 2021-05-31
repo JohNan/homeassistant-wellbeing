@@ -28,6 +28,8 @@ APPLIANCE_DATA_URL = f"{BASE_URL}/Appliances"
 FILTER_TYPE = {
     48: "Particle filter",
     64: "Breeze 360 filter",
+    96: "Breeze 360 filter",
+    99: "Breeze 360 filter",
     192: "Odor filter",
     0: "Filter"
 }
@@ -245,7 +247,6 @@ class Appliance:
             return 0, 9
 
         return 0
-
 
 
 class Appliances:
