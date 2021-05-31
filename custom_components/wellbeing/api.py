@@ -135,7 +135,7 @@ class Appliance:
 
         a9_entities = [
             ApplianceSensor(
-                name=f"{FILTER_TYPE[data.get('FilterType', 0)]} Life",
+                name=f"{FILTER_TYPE.get(data.get('FilterType', 0), 'Filter')} Life",
                 attr='FilterLife',
                 unit=PERCENTAGE
             ),
@@ -235,12 +235,16 @@ class Appliance:
         if self.model == "PUREA9":
             return ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
+        return []
+
     @property
     def speed_range(self):
         if self.model == "WELLA7":
             return 0, 5
         if self.model == "PUREA9":
             return 0, 9
+
+        return 0
 
 
 
