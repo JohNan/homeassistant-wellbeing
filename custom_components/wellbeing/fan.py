@@ -1,11 +1,15 @@
 """Sensor platform for Wellbeing."""
+import math
+
+import logging
+
 from typing import Any
 
 import asyncio
 
 from homeassistant.components.fan import FanEntity, SUPPORT_SET_SPEED, SUPPORT_PRESET_MODE
 from homeassistant.util.percentage import percentage_to_ordered_list_item, \
-    percentage_to_ranged_value, ordered_list_item_to_percentage
+    percentage_to_ranged_value, ordered_list_item_to_percentage, ranged_value_to_percentage
 from . import WellbeingDataUpdateCoordinator
 from .api import Mode
 from .const import DEFAULT_NAME, FAN
@@ -13,6 +17,8 @@ from .const import DOMAIN
 from .const import ICON
 from .const import SENSOR
 from .entity import WellbeingEntity
+
+_LOGGER: logging.Logger = logging.getLogger(__package__)
 
 SUPPORTED_FEATURES = SUPPORT_SET_SPEED | SUPPORT_PRESET_MODE
 
@@ -49,21 +55,9 @@ class WellbeingFan(WellbeingEntity, FanEntity):
         return self.get_appliance.speed_range
 
     @property
-    def _ordered_named_fan_speeds(self):
-        return self.get_appliance.ordered_named_fan_speeds
-
-    @property
     def name(self):
         """Return the name of the sensor."""
         return self.get_entity.name
-
-    @property
-    def speed(self) -> str:
-        return str(self._speed if self.get_entity.state is None else self.get_entity.state)
-
-    @property
-    def speed_list(self) -> list:
-        return list(range(self._speed_range[0]+1, self._speed_range[1]+1))
 
     @property
     def speed_count(self) -> int:
@@ -74,16 +68,17 @@ class WellbeingFan(WellbeingEntity, FanEntity):
     def percentage(self):
         """Return the current speed percentage."""
         speed = self._speed if self.get_entity.state is None else self.get_entity.state
-        if speed == 0:
-            return 0
-
-        return ordered_list_item_to_percentage(self.speed_list, speed)
+        percentage = ranged_value_to_percentage(self._speed_range, speed)
+        _LOGGER.debug(f"percentage - speed: {speed} percentage: {percentage}")
+        return percentage
 
     async def async_set_percentage(self, percentage: int) -> None:
         """Set the speed percentage of the fan."""
-        self._speed = percentage_to_ranged_value(self._speed_range, percentage)
+        self._speed = math.floor(percentage_to_ranged_value(self._speed_range, percentage))
         self.get_entity.clear_state()
         self.async_write_ha_state()
+
+        _LOGGER.debug(f"async_set_percentage - speed: {self._speed} percentage: {percentage}")
 
         if percentage == 0:
             await self.async_turn_off()
@@ -94,7 +89,7 @@ class WellbeingFan(WellbeingEntity, FanEntity):
         if not is_manual:
             await self.async_set_preset_mode(Mode.MANUAL)
 
-        await self.api.set_fan_speed(self.pnc_id, int(percentage_to_ordered_list_item(self._ordered_named_fan_speeds, percentage)))
+        await self.api.set_fan_speed(self.pnc_id, self._speed)
 
         if is_manual:
             await asyncio.sleep(10)
