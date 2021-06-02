@@ -231,20 +231,11 @@ class Appliance:
         ]
 
     @property
-    def ordered_named_fan_speeds(self):
-        if self.model == "WELLA7":
-            return ["0", "1", "2", "3", "4", "5"]
-        if self.model == "PUREA9":
-            return ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-
-        return []
-
-    @property
     def speed_range(self):
         if self.model == "WELLA7":
-            return 0, 5
+            return 1, 5
         if self.model == "PUREA9":
-            return 0, 9
+            return 1, 9
 
         return 0
 
@@ -358,6 +349,9 @@ class WellbeingApiClient:
             app.brand = appliance_info['brand']
             app.serialNumber = appliance_info['serialNumber']
             app.device = appliance_info['device']
+
+            if app.device != 'AIR_PURIFIER':
+                continue
 
             appliance_data = await self._get_appliance_data(access_token, appliance['pncId'])
             _LOGGER.info(f"{appliance_data.get('applianceData', {}).get('applianceName', 'N/A')}: {appliance_data}")
