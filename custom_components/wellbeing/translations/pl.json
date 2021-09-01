@@ -1,0 +1,29 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Wellbeing",
+        "description": "Jeśli potrzebujesz pomocy z konfiguracją zajrzyj tutaj: https://github.com/JohNan/homeassistant-wellbeing",
+        "data": {
+          "username": "Nazwa użytkownika",
+          "password": "Hasło"
+        }
+      }
+    },
+    "error": {
+      "auth": "Nazwa użytkownika/Hasło są złe."
+    },
+    "abort": {
+      "single_instance_allowed": "Tylko jedna instancja jest dozwolona."
+    }
+  },
+  "options": {
+    "step": {
+      "user": {
+        "data": {
+          "scan_interval": "Interwał aktualizacji API (w sekundach)"
+        }
+      }
+    }
+  }
+}

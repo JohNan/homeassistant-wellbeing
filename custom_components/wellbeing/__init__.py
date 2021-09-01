@@ -2,7 +2,7 @@
 Custom integration to integrate Wellbeing with Home Assistant.
 
 For more details about this integration, please refer to
-https://github.com/JohNan/wellbeing
+https://github.com/JohNan/homeassistant-wellbeing
 """
 import asyncio
 import logging
