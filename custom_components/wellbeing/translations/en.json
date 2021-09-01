@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Wellbeing",
-        "description": "If you need help with the configuration have a look here: https://github.com/JohNan/wellbeing",
+        "description": "If you need help with the configuration have a look here: https://github.com/JohNan/homeassistant-wellbeing",
         "data": {
           "username": "Username",
           "password": "Password"
