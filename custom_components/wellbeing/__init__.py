@@ -24,6 +24,7 @@ from .const import PLATFORMS
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
 
+# noinspection PyUnusedLocal
 async def async_setup(hass: HomeAssistant, config: Config):
     """Set up this integration using YAML is not supported."""
     return True
@@ -66,7 +67,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 class WellbeingDataUpdateCoordinator(DataUpdateCoordinator):
     """Class to manage fetching data from the API."""
 
-    def __init__(self,hass: HomeAssistant, client: WellbeingApiClient, update_interval: timedelta) -> None:
+    def __init__(self, hass: HomeAssistant, client: WellbeingApiClient, update_interval: timedelta) -> None:
         """Initialize."""
         self.api = client
         self.platforms = []

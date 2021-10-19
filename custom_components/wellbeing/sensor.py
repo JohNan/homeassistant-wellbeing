@@ -2,9 +2,7 @@
 from typing import cast
 
 from .api import ApplianceSensor
-from .const import DEFAULT_NAME
 from .const import DOMAIN
-from .const import ICON
 from .const import SENSOR
 from .entity import WellbeingEntity
 
@@ -35,4 +33,3 @@ class WellbeingSensor(WellbeingEntity):
     @property
     def unit_of_measurement(self):
         return cast(ApplianceSensor, self.get_entity).unit
-

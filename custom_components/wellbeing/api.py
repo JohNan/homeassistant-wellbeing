@@ -330,7 +330,7 @@ class WellbeingApiClient:
         """Get data from the API."""
         n = 0
         while not await self.async_login() and n < RETRIES:
-            _LOGGER.debug(f"Re-trying login. Attempt {n+1} / {RETRIES}")
+            _LOGGER.debug(f"Re-trying login. Attempt {n + 1} / {RETRIES}")
             n += 1
 
         if self._current_access_token is None:

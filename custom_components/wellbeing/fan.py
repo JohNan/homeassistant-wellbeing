@@ -1,21 +1,14 @@
 """Sensor platform for Wellbeing."""
+import asyncio
+import logging
 import math
 
-import logging
-
-from typing import Any
-
-import asyncio
-
 from homeassistant.components.fan import FanEntity, SUPPORT_SET_SPEED, SUPPORT_PRESET_MODE
-from homeassistant.util.percentage import percentage_to_ordered_list_item, \
-    percentage_to_ranged_value, ordered_list_item_to_percentage, ranged_value_to_percentage
+from homeassistant.util.percentage import percentage_to_ranged_value, ranged_value_to_percentage
 from . import WellbeingDataUpdateCoordinator
 from .api import Mode
-from .const import DEFAULT_NAME, FAN
 from .const import DOMAIN
-from .const import ICON
-from .const import SENSOR
+from .const import FAN
 from .entity import WellbeingEntity
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
@@ -27,6 +20,7 @@ PRESET_MODES = [
     Mode.AUTO,
     Mode.MANUAL
 ]
+
 
 async def async_setup_entry(hass, entry, async_add_devices):
     """Setup sensor platform."""
@@ -41,6 +35,7 @@ async def async_setup_entry(hass, entry, async_add_devices):
                     for entity in appliance.entities if entity.entity_type == FAN
                 ]
             )
+
 
 class WellbeingFan(WellbeingEntity, FanEntity):
     """wellbeing Sensor class."""
@@ -63,7 +58,7 @@ class WellbeingFan(WellbeingEntity, FanEntity):
     def speed_count(self) -> int:
         """Return the number of speeds the fan supports."""
         return len(self.speed_list)
-    
+
     @property
     def percentage(self):
         """Return the current speed percentage."""
@@ -127,13 +122,13 @@ class WellbeingFan(WellbeingEntity, FanEntity):
     async def async_turn_on(self, speed: str = None, percentage: int = None,
                             preset_mode: str = None, **kwargs) -> None:
         self._preset_mode = Mode(preset_mode or Mode.AUTO.value)
-        self._speed = percentage_to_ranged_value(self._speed_range, percentage or 10)
+        self._speed = math.floor(percentage_to_ranged_value(self._speed_range, percentage or 10))
         self.get_appliance.clear_mode()
         self.get_entity.clear_state()
         self.async_write_ha_state()
 
         await self.api.set_work_mode(self.pnc_id, self._preset_mode)
-        await self.api.set_fan_speed(self.pnc_id, int(percentage_to_ordered_list_item(self._ordered_named_fan_speeds, percentage or 10)))
+        await self.api.set_fan_speed(self.pnc_id, self._speed)
         await asyncio.sleep(10)
         await self.coordinator.async_request_refresh()
 
