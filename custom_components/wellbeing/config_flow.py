@@ -1,15 +1,14 @@
 """Adds config flow for Wellbeing."""
-import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
+
+import homeassistant.helpers.config_validation as cv
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
-
 from .api import WellbeingApiClient
 from .const import CONF_PASSWORD, CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
 from .const import CONF_USERNAME
 from .const import DOMAIN
-from .const import PLATFORMS
 
 
 class WellbeingFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):

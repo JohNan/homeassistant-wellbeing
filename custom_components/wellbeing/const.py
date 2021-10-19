@@ -17,7 +17,6 @@ SWITCH = "switch"
 FAN = "fan"
 PLATFORMS = [SENSOR, FAN, BINARY_SENSOR]
 
-
 # Configuration and options
 CONF_ENABLED = "enabled"
 CONF_USERNAME = "username"
