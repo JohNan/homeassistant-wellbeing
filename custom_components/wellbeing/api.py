@@ -338,13 +338,13 @@ class WellbeingApiClient:
 
         access_token = self._current_access_token
         appliances = await self._get_appliances(access_token)
-        _LOGGER.info(f"Fetched data: {appliances}")
+        _LOGGER.debug(f"Fetched data: {appliances}")
 
         found_appliances = {}
         for appliance in (appliance for appliance in appliances if 'pncId' in appliance):
             app = Appliance(appliance['applianceName'], appliance['pncId'], appliance['modelName'])
             appliance_info = await self._get_appliance_info(access_token, appliance['pncId'])
-            _LOGGER.info(f"Fetched data: {appliance_info}")
+            _LOGGER.debug(f"Fetched data: {appliance_info}")
 
             app.brand = appliance_info['brand']
             app.serialNumber = appliance_info['serialNumber']
@@ -354,7 +354,7 @@ class WellbeingApiClient:
                 continue
 
             appliance_data = await self._get_appliance_data(access_token, appliance['pncId'])
-            _LOGGER.info(f"{appliance_data.get('applianceData', {}).get('applianceName', 'N/A')}: {appliance_data}")
+            _(f"{appliance_data.get('applianceData', {}).get('applianceName', 'N/A')}: {appliance_data}")
 
             data = appliance_data.get('twin', {}).get('properties', {}).get('reported', {})
             data['connectionState'] = appliance_data.get('twin', {}).get('connectionState')
