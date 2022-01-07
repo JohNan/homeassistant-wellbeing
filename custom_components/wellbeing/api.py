@@ -392,7 +392,7 @@ class WellbeingApiClient:
     async def api_wrapper(self, method: str, url: str, data: dict = {}, headers: dict = {}) -> dict:
         """Get information from the API."""
         try:
-            async with async_timeout.timeout(TIMEOUT, loop=asyncio.get_event_loop()):
+            async with async_timeout.timeout(TIMEOUT):
                 if method == "get":
                     response = await self._session.get(url, headers=headers)
                     return await response.json()
