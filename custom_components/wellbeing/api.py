@@ -354,7 +354,7 @@ class WellbeingApiClient:
                 continue
 
             appliance_data = await self._get_appliance_data(access_token, appliance['pncId'])
-            _(f"{appliance_data.get('applianceData', {}).get('applianceName', 'N/A')}: {appliance_data}")
+            _LOGGER.debug(f"{appliance_data.get('applianceData', {}).get('applianceName', 'N/A')}: {appliance_data}")
 
             data = appliance_data.get('twin', {}).get('properties', {}).get('reported', {})
             data['connectionState'] = appliance_data.get('twin', {}).get('connectionState')
