@@ -16,7 +16,7 @@ class WellbeingEntity(CoordinatorEntity):
         self.entity_type = entity_type
         self.config_entry = config_entry
         self.pnc_id = pnc_id
-        self.entity_id = ENTITY_ID_FORMAT.format(f"{DEFAULT_NAME}_{self.entity_attr}")
+        self.entity_id = ENTITY_ID_FORMAT.format(f"{DEFAULT_NAME}_{self.get_appliance.name}_{self.entity_attr}")
 
     @property
     def name(self):

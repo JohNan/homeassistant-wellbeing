@@ -50,11 +50,6 @@ class WellbeingFan(WellbeingEntity, FanEntity):
         return self.get_appliance.speed_range
 
     @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self.get_entity.name
-
-    @property
     def speed_count(self) -> int:
         """Return the number of speeds the fan supports."""
         return self._speed_range[1]

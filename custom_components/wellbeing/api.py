@@ -244,7 +244,7 @@ class Appliances:
     def __init__(self, appliances) -> None:
         self.appliances = appliances
 
-    def get_appliance(self, pnc_id):
+    def get_appliance(self, pnc_id) -> Appliance | None:
         return self.appliances.get(pnc_id, None)
 
 
