@@ -231,20 +231,20 @@ class Appliance:
         ]
 
     @property
-    def speed_range(self):
+    def speed_range(self) -> tuple:
         if self.model == "WELLA7":
             return 1, 5
         if self.model == "PUREA9":
             return 1, 9
 
-        return 0
+        return 0, 0
 
 
 class Appliances:
     def __init__(self, appliances) -> None:
         self.appliances = appliances
 
-    def get_appliance(self, pnc_id):
+    def get_appliance(self, pnc_id) -> Appliance | None:
         return self.appliances.get(pnc_id, None)
 
 

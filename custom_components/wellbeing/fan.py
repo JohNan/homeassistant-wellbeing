@@ -46,18 +46,13 @@ class WellbeingFan(WellbeingEntity, FanEntity):
         self._speed = self.get_entity.state
 
     @property
-    def _speed_range(self):
+    def _speed_range(self) -> tuple:
         return self.get_appliance.speed_range
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self.get_entity.name
 
     @property
     def speed_count(self) -> int:
         """Return the number of speeds the fan supports."""
-        return len(self.speed_list)
+        return self._speed_range[1]
 
     @property
     def percentage(self):
