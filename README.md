@@ -25,7 +25,7 @@ Add the url to the repository as a custom integration.
 4. Download _all_ the files from the `custom_components/wellbeing/` directory (folder) in this repository.
 5. Place the files you downloaded in the new directory (folder) you created.
 6. Restart Home Assistant
-7. In the HA UI go to "Configuration" -> "Integrations" click "+" and search for "Wellbeing"
+7. In the HA UI go to "Configuration" -> "Integrations" click "+" and search for "Electrolux Wellbeing"
 
 
 Contributions are welcome!
