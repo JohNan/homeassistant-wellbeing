@@ -13,6 +13,7 @@ A custom component designed for [Home Assistant](https://www.home-assistant.io) 
 
 - Pure A9 Air Purifier
 - Well A7 Air Purifier
+- Well A5 Air Purifier
 
 ### Install with HACS (recommended)
 Do you you have [HACS][hacs] installed? Just search for Electrolux Wellbeing and install it direct from HACS. HACS will keep track of updates and you can easly upgrade this component to latest version.

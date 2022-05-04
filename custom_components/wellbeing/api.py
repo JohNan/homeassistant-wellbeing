@@ -236,6 +236,8 @@ class Appliance:
             return 1, 5
         if self.model == "PUREA9":
             return 1, 9
+        if self.model == "WELLA5":
+            return 1, 5
 
         return 0, 0
 
