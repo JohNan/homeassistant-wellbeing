@@ -1,20 +1,18 @@
 """Sample API Client."""
-import json
-from datetime import datetime, timedelta
-
 import asyncio
 import logging
 import socket
+from datetime import datetime, timedelta
 from enum import Enum
-from typing import Union
 
 import aiohttp
 import async_timeout
 
 from custom_components.wellbeing.const import SENSOR, FAN, BINARY_SENSOR
-from homeassistant.components.binary_sensor import DEVICE_CLASS_CONNECTIVITY
-from homeassistant.const import TEMP_CELSIUS, PERCENTAGE, DEVICE_CLASS_TEMPERATURE, DEVICE_CLASS_CO2, \
-    DEVICE_CLASS_HUMIDITY, CONCENTRATION_PARTS_PER_MILLION, CONCENTRATION_PARTS_PER_BILLION
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass
+from homeassistant.components.sensor import SensorDeviceClass
+from homeassistant.const import TEMP_CELSIUS, PERCENTAGE, CONCENTRATION_PARTS_PER_MILLION, \
+    CONCENTRATION_PARTS_PER_BILLION, CONCENTRATION_MICROGRAMS_PER_CUBIC_METER
 
 TIMEOUT = 10
 RETRIES = 3
@@ -113,7 +111,7 @@ class Appliance:
                 name="eCO2",
                 attr='ECO2',
                 unit=CONCENTRATION_PARTS_PER_MILLION,
-                device_class=DEVICE_CLASS_CO2
+                device_class=SensorDeviceClass.CO2
             ),
             ApplianceSensor(
                 name=f"{FILTER_TYPE[data.get('FilterType_1', 0)]} Life",
@@ -145,20 +143,20 @@ class Appliance:
                 name="CO2",
                 attr='CO2',
                 unit=CONCENTRATION_PARTS_PER_MILLION,
-                device_class=DEVICE_CLASS_CO2
+                device_class=SensorDeviceClass.CO2
             ),
         ]
 
         common_entities = [
             ApplianceFan(
                 name="Fan Speed",
-                attr='Fanspeed'
+                attr='Fanspeed',
             ),
             ApplianceSensor(
                 name="Temperature",
                 attr='Temp',
                 unit=TEMP_CELSIUS,
-                device_class=DEVICE_CLASS_TEMPERATURE
+                device_class=SensorDeviceClass.TEMPERATURE
             ),
             ApplianceSensor(
                 name="TVOC",
@@ -167,21 +165,27 @@ class Appliance:
             ),
             ApplianceSensor(
                 name="PM1",
-                attr='PM1'
+                attr='PM1',
+                unit=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+                device_class=SensorDeviceClass.PM1
             ),
             ApplianceSensor(
                 name="PM2.5",
-                attr='PM2_5'
+                attr='PM2_5',
+                unit=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+                device_class=SensorDeviceClass.PM25
             ),
             ApplianceSensor(
                 name="PM10",
-                attr='PM10'
+                attr='PM10',
+                unit=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+                device_class=SensorDeviceClass.PM10
             ),
             ApplianceSensor(
                 name="Humidity",
                 attr='Humidity',
                 unit=PERCENTAGE,
-                device_class=DEVICE_CLASS_HUMIDITY
+                device_class=SensorDeviceClass.HUMIDITY
             ),
             ApplianceSensor(
                 name="Mode",
@@ -198,7 +202,7 @@ class Appliance:
             ApplianceBinary(
                 name="Connection State",
                 attr='connectionState',
-                device_class=DEVICE_CLASS_CONNECTIVITY
+                device_class=BinarySensorDeviceClass.CONNECTIVITY
             ),
             ApplianceBinary(
                 name="Status",
@@ -206,7 +210,8 @@ class Appliance:
             ),
             ApplianceBinary(
                 name="Safety Lock",
-                attr='SafetyLock'
+                attr='SafetyLock',
+                device_class=BinarySensorDeviceClass.LOCK
             )
         ]
 
