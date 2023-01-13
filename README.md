@@ -16,9 +16,9 @@ A custom component designed for [Home Assistant](https://www.home-assistant.io) 
 - Well A5 Air Purifier
 
 ### Install with HACS (recommended)
-Do you you have [HACS][hacs] installed? Just search for Electrolux Wellbeing and install it direct from HACS. HACS will keep track of updates and you can easly upgrade this component to latest version.
+Do you you have [HACS][hacs] installed? Just search for Electrolux Wellbeing and install it direct from HACS. HACS will keep track of updates and you can easily upgrade this integration to latest version.
 
-### Installation
+### Manual Installation
 
 1. Using the tool of choice open the directory (folder) for your HA configuration (where you find `configuration.yaml`).
 2. If you do not have a `custom_components` directory (folder) there, you need to create it.
