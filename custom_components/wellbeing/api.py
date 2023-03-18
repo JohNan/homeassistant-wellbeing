@@ -24,11 +24,12 @@ APPLIANCE_INFO_URL = f"{BASE_URL}/AppliancesInfo"
 APPLIANCE_DATA_URL = f"{BASE_URL}/Appliances"
 
 FILTER_TYPE = {
-    48: "Particle filter",
+    48: "BREEZE Complete air filter",
+    51: "CARE Ultimate protect filter",
     64: "Breeze 360 filter",
     96: "Breeze 360 filter",
     99: "Breeze 360 filter",
-    192: "Odor filter",
+    192: "FRESH Odour protect filter",
     0: "Filter"
 }
 
