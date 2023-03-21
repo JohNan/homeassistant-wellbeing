@@ -75,11 +75,15 @@ class WellbeingDataUpdateCoordinator(DataUpdateCoordinator):
         super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=update_interval)
 
     async def async_login(self) -> bool:
-        """Login to Verisure."""
+        """Login to Wellbeing."""
         try:
             await self.api.async_login()
         except Exception as ex:
-            _LOGGER.error("Could not log in to WellBeing, %s", ex)
+            _LOGGER.error(
+                "Could not log in to WellBeing, %s. Will try again after %d",
+                ex,
+                self.update_interval.seconds
+            )
             return False
 
         return True

@@ -1,15 +1,20 @@
 """Adds config flow for Wellbeing."""
+from typing import Mapping, Any
+
 import voluptuous as vol
+import logging
 
 import homeassistant.helpers.config_validation as cv
 from homeassistant import config_entries
 from homeassistant.core import callback
+from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from .api import WellbeingApiClient
 from .const import CONF_PASSWORD, CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
 from .const import CONF_USERNAME
 from .const import DOMAIN
 
+_LOGGER: logging.Logger = logging.getLogger(__package__)
 
 class WellbeingFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for wellbeing."""
@@ -39,6 +44,31 @@ class WellbeingFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             return await self._show_config_form(user_input)
 
         return await self._show_config_form(user_input)
+
+    async def async_step_reauth(self, entry_data: Mapping[str, Any]) -> FlowResult:
+        """Handle configuration by re-auth."""
+        return await self.async_step_reauth_validate()
+
+    async def async_step_reauth_validate(self, user_input=None):
+        """Handle reauth and validation."""
+        errors = {}
+        if user_input is not None:
+            return await self._test_credentials(
+                user_input[CONF_USERNAME], user_input[CONF_PASSWORD]
+            )
+
+        return self.async_show_form(
+            step_id="reauth_validate",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_PASSWORD): str,
+                }
+            ),
+            errors=errors,
+            description_placeholders={
+                CONF_USERNAME: user_input[CONF_USERNAME],
+            },
+        )
 
     @staticmethod
     @callback

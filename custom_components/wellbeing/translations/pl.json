@@ -7,6 +7,13 @@
           "username": "Nazwa użytkownika",
           "password": "Hasło"
         }
+      },
+      "reauth_validate": {
+        "data": {
+          "password": "Password"
+        },
+        "description": "Enter the password for {username}.",
+        "title": "Reauthenticate an August account"
       }
     },
     "error": {

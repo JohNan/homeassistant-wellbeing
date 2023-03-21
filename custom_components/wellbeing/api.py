@@ -404,17 +404,14 @@ class WellbeingApiClient:
                 if method == "get":
                     response = await self._session.get(url, headers=headers)
                     return await response.json()
-
                 elif method == "put":
                     response = await self._session.put(url, headers=headers, json=data)
                     return await response.json()
-
-                elif method == "patch":
-                    await self._session.patch(url, headers=headers, json=data)
-
                 elif method == "post":
                     response = await self._session.post(url, headers=headers, json=data)
                     return await response.json()
+                else:
+                    raise Exception("Unsupported http method '%s'" % method)
 
         except asyncio.TimeoutError as exception:
             _LOGGER.error(
@@ -437,3 +434,5 @@ class WellbeingApiClient:
             )
         except Exception as exception:  # pylint: disable=broad-except
             _LOGGER.error("Something really wrong happened! - %s", exception)
+
+        return {}
