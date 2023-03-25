@@ -12,6 +12,8 @@ Get the status from your Electrolux devices connected to Wellbeing. **Currently,
 ### Supported and tested devices
 
 - Pure A9 Air Purifier
+- Well A7 Air Purifier
+- Well A5 Air Purifier
 
 {% if not installed %}
 
