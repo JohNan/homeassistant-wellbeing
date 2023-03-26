@@ -11,9 +11,19 @@ A custom component designed for [Home Assistant](https://www.home-assistant.io) 
 
 ### Supported and tested devices
 
-- Pure A9 Air Purifier
-- Well A7 Air Purifier
-- Well A5 Air Purifier
+- AEG AX5 Air Purifiers
+    - AX51-304WT
+    
+- AEG AX7 Air Purifiers
+    - AX71-304GY
+    - AX71-304DG
+    
+- AEG AX9 Air Purifiers
+    - AX91-404GY
+    - AX91-404DG
+    - AX91-405DG
+    - AX91-604GY
+    - AX91-604DG
 
 ### Install with HACS (recommended)
 Do you you have [HACS][hacs] installed? Just search for Electrolux Wellbeing and install it direct from HACS. HACS will keep track of updates and you can easily upgrade this integration to latest version.
