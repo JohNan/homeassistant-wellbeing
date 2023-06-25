@@ -16,12 +16,15 @@ from homeassistant.const import TEMP_CELSIUS, PERCENTAGE, CONCENTRATION_PARTS_PE
 
 TIMEOUT = 10
 RETRIES = 3
-BASE_URL = "https://api.delta.electrolux.com/api"
-TOKEN_URL = "https://electrolux-wellbeing-client.vercel.app/api/mu52m5PR9X"
-LOGIN_URL = f"{BASE_URL}/Users/Login"
-APPLIANCES_URL = f"{BASE_URL}/Domains/Appliances"
-APPLIANCE_INFO_URL = f"{BASE_URL}/AppliancesInfo"
-APPLIANCE_DATA_URL = f"{BASE_URL}/Appliances"
+CLIENT_ID = "ElxOneApp"
+CLIENT_SECRET = "8UKrsKD7jH9zvTV7rz5HeCLkit67Mmj68FvRVTlYygwJYy4dW6KF2cVLPKeWzUQUd6KJMtTifFf4NkDnjI7ZLdfnwcPtTSNtYvbP7OzEkmQD9IjhMOf5e1zeAQYtt2yN"
+X_API_KEY = "2AMqwEV5MqVhTKrRCyYfVF8gmKrd2rAmp7cUsfky"
+
+BASE_URL = "https://api.ocp.electrolux.one"
+TOKEN_URL = f"{BASE_URL}/one-account-authorization/api/v1/token"
+AUTHENTICATION_URL = f"{BASE_URL}/one-account-authentication/api/v1/authenticate"
+API_URL = f"{BASE_URL}/appliance/api/v2"
+APPLIANCES_URL = f"{API_URL}/appliances"
 
 FILTER_TYPE = {
     48: "BREEZE Complete air filter",
@@ -36,7 +39,6 @@ FILTER_TYPE = {
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
 HEADERS = {"Content-type": "application/json; charset=UTF-8"}
-
 
 class Mode(str, Enum):
     OFF = "PowerOff"
@@ -268,27 +270,51 @@ class WellbeingApiClient:
         self._current_access_token = None
         self._token_expires = datetime.now()
         self.appliances = None
-
+    
     async def _get_token(self) -> dict:
-        return await self.api_wrapper("get", TOKEN_URL)
-
+        json = {
+            "clientId": CLIENT_ID,
+            "clientSecret": CLIENT_SECRET,
+            "grantType": "client_credentials"
+        }
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+        return await self.api_wrapper("post", TOKEN_URL, json, headers)
+    
     async def _login(self, access_token: str) -> dict:
         credentials = {
-            "Username": self._username,
-            "Password": self._password
+            "username": self._username,
+            "password": self._password
         }
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
-            "Accept": "application/json"
+            "Accept": "application/json",
+            "x-api-key": X_API_KEY
         }
-        return await self.api_wrapper("post", LOGIN_URL, credentials, headers)
+        return await self.api_wrapper("post", AUTHENTICATION_URL, credentials, headers)
+
+    async def _get_token2(self, idToken: str, countryCode: str) -> dict:
+        credentials = {
+            "clientId": CLIENT_ID,
+            "idToken": idToken,
+            "grantType": "urn:ietf:params:oauth:grant-type:token-exchange"
+        }
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Origin-Country-Code": countryCode
+        }
+        return await self.api_wrapper("post", TOKEN_URL, credentials, headers)
 
     async def _get_appliances(self, access_token: str) -> dict:
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
-            "Accept": "application/json"
+            "Accept": "application/json",
+            "x-api-key": X_API_KEY
         }
         return await self.api_wrapper("get", APPLIANCES_URL, headers=headers)
 
@@ -296,16 +322,11 @@ class WellbeingApiClient:
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
-            "Accept": "application/json"
+            "Accept": "application/json",
+            "x-api-key": X_API_KEY
         }
-        url = f"{APPLIANCE_INFO_URL}/{pnc_id}"
+        url = f"{APPLIANCES_URL}/{pnc_id}/info"
         return await self.api_wrapper("get", url, headers=headers)
-
-    async def _get_appliance_data(self, access_token: str, pnc_id: str) -> dict:
-        headers = {
-            "Authorization": f"Bearer {access_token}"
-        }
-        return await self.api_wrapper("get", f"{APPLIANCE_DATA_URL}/{pnc_id}", headers=headers)
 
     async def async_login(self) -> bool:
         if self._current_access_token is not None and self._token_expires > datetime.now():
@@ -320,15 +341,24 @@ class WellbeingApiClient:
         if 'accessToken' not in access_token:
             self._access_token = None
             self._current_access_token = None
-            _LOGGER.debug("AccessToken 1 is missing")
+            _LOGGER.error("AccessToken 1 is missing")
+            return False
+        
+        userToken = await self._login(access_token['accessToken'])
+
+        if 'idToken' not in userToken:
+            self._current_access_token = None
+            _LOGGER.error("User login failed")
             return False
 
-        token = await self._login(access_token['accessToken'])
+        token = await self._get_token2(userToken['idToken'], userToken['countryCode'])
 
         if 'accessToken' not in token:
             self._current_access_token = None
-            _LOGGER.debug("AccessToken 2 is missing")
+            _LOGGER.error("AccessToken 2 is missing")
             return False
+        
+        _LOGGER.debug("Received new token sucssfully")
 
         self._token_expires = datetime.now() + timedelta(seconds=token['expiresIn'])
         self._current_access_token = token['accessToken']
@@ -349,24 +379,25 @@ class WellbeingApiClient:
         _LOGGER.debug(f"Fetched data: {appliances}")
 
         found_appliances = {}
-        for appliance in (appliance for appliance in appliances if 'pncId' in appliance):
-            app = Appliance(appliance['applianceName'], appliance['pncId'], appliance['modelName'])
-            appliance_info = await self._get_appliance_info(access_token, appliance['pncId'])
+        for appliance in (appliance for appliance in appliances if 'applianceId' in appliance):
+            modelName = appliance['applianceData']['modelName']
+            applianceId = appliance['applianceId']
+            applianceName = appliance['applianceData']['applianceName']
+        
+            app = Appliance(applianceName, applianceId, modelName)
+            appliance_info = await self._get_appliance_info(access_token, applianceId)
             _LOGGER.debug(f"Fetched data: {appliance_info}")
 
             app.brand = appliance_info['brand']
             app.serialNumber = appliance_info['serialNumber']
-            app.device = appliance_info['device']
+            app.device = appliance_info['deviceType']
 
             if app.device != 'AIR_PURIFIER':
                 continue
 
-            appliance_data = await self._get_appliance_data(access_token, appliance['pncId'])
-            _LOGGER.debug(f"{appliance_data.get('applianceData', {}).get('applianceName', 'N/A')}: {appliance_data}")
-
-            data = appliance_data.get('twin', {}).get('properties', {}).get('reported', {})
-            data['connectionState'] = appliance_data.get('twin', {}).get('connectionState')
-            data['status'] = appliance_data.get('twin', {}).get('connectionState')
+            data = appliance.get('properties', {}).get('reported', {})
+            data['status'] = appliance.get('connectionState')
+            data['connectionState'] = appliance.get('connectionState')
             app.setup(data)
 
             found_appliances[app.pnc_id] = app
@@ -392,10 +423,11 @@ class WellbeingApiClient:
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
-            "Accept": "application/json"
+            "Accept": "application/json",
+            "x-api-key": X_API_KEY
         }
 
-        await self.api_wrapper("put", f"{APPLIANCE_DATA_URL}/{pnc_id}/Commands", data=command, headers=headers)
+        await self.api_wrapper("put", f"{APPLIANCES_URL}/{pnc_id}/command", data=command, headers=headers)
 
     async def api_wrapper(self, method: str, url: str, data: dict = {}, headers: dict = {}) -> dict:
         """Get information from the API."""
