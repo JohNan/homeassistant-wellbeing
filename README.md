@@ -9,7 +9,7 @@
 
 A custom component designed for [Home Assistant](https://www.home-assistant.io) with the capability to interact with the Electrolux devices connected to Wellbeing.
 
-### Supported devices
+### Supported models
 
 - Electrolux Well A5 Purifiers
     - WA51-302WT
