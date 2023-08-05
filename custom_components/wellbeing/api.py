@@ -242,6 +242,8 @@ class Appliance:
     def speed_range(self) -> tuple:
         if self.model == "WELLA7":
             return 1, 5
+        if self.model == "AX7":
+            return 1, 5
         if self.model == "PUREA9":
             return 1, 9
         if self.model == "WELLA5":
