@@ -7,7 +7,7 @@
 [![Project Maintenance][maintenance-shield]][user_profile]
 [![BuyMeCoffee][buymecoffeebadge]][buymecoffee]
 
-Get the status from your Electrolux devices connected to Wellbeing. **Currently, only fetching of values are supported**
+A custom component designed for [Home Assistant](https://www.home-assistant.io) with the capability to interact with the Electrolux devices connected to Wellbeing.
 
 #### Supported models
 
