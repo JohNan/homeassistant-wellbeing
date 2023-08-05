@@ -50,12 +50,12 @@ A custom component designed for [Home Assistant](https://www.home-assistant.io) 
 
 [buymecoffee]: https://www.buymeacoffee.com/JohNan
 [buymecoffeebadge]: https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow.svg?style=for-the-badge
-[commits-shield]: https://img.shields.io/github/commit-activity/y/JohNan/wellbeing.svg?style=for-the-badge
+[commits-shield]: https://img.shields.io/github/commit-activity/y/JohNan/homeassistant-wellbeing.svg?style=for-the-badge
 [commits]: https://github.com/JohNan/homeassistant-wellbeing/commits/main
 [hacs]: https://hacs.xyz
-[hacsbadge]: https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge
-[license-shield]: https://img.shields.io/github/license/JohNan/wellbeing.svg?style=for-the-badge
+[hacsbadge]: https://img.shields.io/badge/HACS-Default-orange.svg?style=for-the-badge
+[license-shield]: https://img.shields.io/github/license/JohNan/homeassistant-wellbeing.svg?style=for-the-badge
 [maintenance-shield]: https://img.shields.io/badge/maintainer-%40JohNan-blue.svg?style=for-the-badge
-[releases-shield]: https://img.shields.io/github/release/JohNan/wellbeing.svg?style=for-the-badge
+[releases-shield]: https://img.shields.io/github/release/JohNan/homeassistant-wellbeing.svg?style=for-the-badge
 [releases]: https://github.com/JohNan/homeassistant-wellbeing/releases
 [user_profile]: https://github.com/JohNan
