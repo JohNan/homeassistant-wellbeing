@@ -9,7 +9,21 @@
 
 Get the status from your Electrolux devices connected to Wellbeing. **Currently, only fetching of values are supported**
 
-### Supported and tested devices
+#### Supported models
+
+- Electrolux Well A5 Purifiers
+    - WA51-302WT
+    - WA51-302GY
+    - WA51-303GY
+
+- Electrolux Well A7 Purifiers
+    - WA71-302GY
+    - WA71-302DG
+    - WA71-304GY
+ 
+- Electrolux Well A9 Purifiers
+    - PA91-404GY
+    - PA91-604GY
 
 - AEG AX5 Air Purifiers
     - AX51-304WT
