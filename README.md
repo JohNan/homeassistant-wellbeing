@@ -21,9 +21,11 @@ A custom component designed for [Home Assistant](https://www.home-assistant.io) 
     - WA71-302DG
     - WA71-304GY
  
-- Electrolux Well A9 Purifiers
-    - PA91-404GY
-    - PA91-604GY
+- Electrolux Pure A9 Purifiers
+    - PA91-406GY
+    - PA91-606DG
+    - EHAW4010AG
+    - EHAW6020AG
 
 - AEG AX5 Air Purifiers
     - AX51-304WT
