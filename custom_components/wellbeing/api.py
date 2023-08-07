@@ -251,6 +251,8 @@ class Appliance:
             return 1, 5
         if self.model == "WELLA7":
             return 1, 5
+        if self.model == "AX7":
+            return 1, 5
         if self.model == "PUREA9":
             return 1, 9
 
