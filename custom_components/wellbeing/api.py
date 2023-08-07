@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import socket
+import json
 from datetime import datetime, timedelta
 from enum import Enum
 
@@ -13,6 +14,10 @@ from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.const import TEMP_CELSIUS, PERCENTAGE, CONCENTRATION_PARTS_PER_MILLION, \
     CONCENTRATION_PARTS_PER_BILLION, CONCENTRATION_MICROGRAMS_PER_CUBIC_METER
+
+
+with open("de.json", "r", encoding="utf-8") as file:
+    translations = json.load(file)
 
 TIMEOUT = 10
 RETRIES = 3
@@ -39,6 +44,10 @@ FILTER_TYPE = {
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
 HEADERS = {"Content-type": "application/json; charset=UTF-8"}
+
+class CustomComponent:
+    def get_translation(self, key):
+        return translations.get(key, key)
 
 class Mode(str, Enum):
     OFF = "PowerOff"
