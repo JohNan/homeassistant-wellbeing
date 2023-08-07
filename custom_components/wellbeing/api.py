@@ -16,9 +16,6 @@ from homeassistant.const import TEMP_CELSIUS, PERCENTAGE, CONCENTRATION_PARTS_PE
     CONCENTRATION_PARTS_PER_BILLION, CONCENTRATION_MICROGRAMS_PER_CUBIC_METER
 
 
-with open("de.json", "r", encoding="utf-8") as file:
-    translations = json.load(file)
-
 TIMEOUT = 10
 RETRIES = 3
 CLIENT_ID = "ElxOneApp"
@@ -260,7 +257,7 @@ class Appliance:
 
         ## AEG Devices:
         if self.model == "AX5":
-         return 1, 5
+            return 1, 5
         if self.model == "AX7":
             return 1, 5
         if self.model == "AX9":
