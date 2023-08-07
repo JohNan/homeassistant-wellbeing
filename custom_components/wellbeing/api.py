@@ -240,14 +240,22 @@ class Appliance:
 
     @property
     def speed_range(self) -> tuple:
-        if self.model == "WELLA7":
+        ## Electrolux Devices: 
+        if self.model == "WELLA5":
             return 1, 5
-        if self.model == "AX7":
+        if self.model == "WELLA7":
             return 1, 5
         if self.model == "PUREA9":
             return 1, 9
-        if self.model == "WELLA5":
+
+
+        ## AEG Devices:
+        if self.model == "AX5":
+         return 1, 5
+        if self.model == "AX7":
             return 1, 5
+        if self.model == "AX9":
+            return 1, 9
 
         return 0, 0
 
