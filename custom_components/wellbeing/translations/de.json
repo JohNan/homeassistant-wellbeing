@@ -1,0 +1,35 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "Wenn Sie Hilfe bei der Konfiguration benötigen, schauen Sie hier: https://github.com/JohNan/homeassistant-wellbeing",
+        "data": {
+          "username": "Benutzername (E-Mail)",
+          "password": "Passwort"
+        }
+      },
+      "reauth_validate": {
+        "data": {
+          "password": "Passwort"
+        },
+        "description": "Geben Sie das Passwort für {username} ein.",
+        "title": "Account-Reauthentifizierung"
+      }
+    },
+    "error": {
+      "auth": "Benutzername oder Passwort falsch!"
+    },
+    "abort": {
+      "single_instance_allowed": "Nur eine einzige Instanz ist zulässig."
+    }
+  },
+  "options": {
+    "step": {
+      "user": {
+        "data": {
+          "scan_interval": "API-Aktualisierungsintervall (in Sekunden)"
+        }
+      }
+    }
+  }
+}

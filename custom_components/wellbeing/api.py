@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import socket
+import json
 from datetime import datetime, timedelta
 from enum import Enum
 
@@ -13,6 +14,7 @@ from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.const import TEMP_CELSIUS, PERCENTAGE, CONCENTRATION_PARTS_PER_MILLION, \
     CONCENTRATION_PARTS_PER_BILLION, CONCENTRATION_MICROGRAMS_PER_CUBIC_METER
+
 
 TIMEOUT = 10
 RETRIES = 3
@@ -39,6 +41,10 @@ FILTER_TYPE = {
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
 HEADERS = {"Content-type": "application/json; charset=UTF-8"}
+
+class CustomComponent:
+    def get_translation(self, key):
+        return translations.get(key, key)
 
 class Mode(str, Enum):
     OFF = "PowerOff"
@@ -240,14 +246,22 @@ class Appliance:
 
     @property
     def speed_range(self) -> tuple:
-        if self.model == "WELLA7":
+        ## Electrolux Devices: 
+        if self.model == "WELLA5":
             return 1, 5
-        if self.model == "AX7":
+        if self.model == "WELLA7":
             return 1, 5
         if self.model == "PUREA9":
             return 1, 9
-        if self.model == "WELLA5":
+
+
+        ## AEG Devices:
+        if self.model == "AX5":
             return 1, 5
+        if self.model == "AX7":
+            return 1, 5
+        if self.model == "AX9":
+            return 1, 9
 
         return 0, 0
 
