@@ -12,7 +12,7 @@ import async_timeout
 from custom_components.wellbeing.const import SENSOR, FAN, BINARY_SENSOR
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.sensor import SensorDeviceClass
-from homeassistant.const import TEMP_CELSIUS, PERCENTAGE, CONCENTRATION_PARTS_PER_MILLION, \
+from homeassistant.const import UnitOfTemperature, PERCENTAGE, CONCENTRATION_PARTS_PER_MILLION, \
     CONCENTRATION_PARTS_PER_BILLION, CONCENTRATION_MICROGRAMS_PER_CUBIC_METER
 
 
@@ -164,7 +164,7 @@ class Appliance:
             ApplianceSensor(
                 name="Temperature",
                 attr='Temp',
-                unit=TEMP_CELSIUS,
+                unit=UnitOfTemperature.CELSIUS,
                 device_class=SensorDeviceClass.TEMPERATURE
             ),
             ApplianceSensor(

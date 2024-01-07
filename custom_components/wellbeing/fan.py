@@ -3,7 +3,7 @@ import asyncio
 import logging
 import math
 
-from homeassistant.components.fan import FanEntity, SUPPORT_SET_SPEED, SUPPORT_PRESET_MODE
+from homeassistant.components.fan import FanEntity, FanEntityFeature
 from homeassistant.util.percentage import percentage_to_ranged_value, ranged_value_to_percentage
 from . import WellbeingDataUpdateCoordinator
 from .api import Mode
@@ -13,7 +13,7 @@ from .entity import WellbeingEntity
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
-SUPPORTED_FEATURES = SUPPORT_SET_SPEED | SUPPORT_PRESET_MODE
+SUPPORTED_FEATURES = FanEntityFeature.SET_SPEED | FanEntityFeature.PRESET_MODE
 
 PRESET_MODES = [
     Mode.OFF,
