@@ -1,0 +1,38 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "Om du behöver hjälp med konfigurationen, se här: https://github.com/JohNan/homeassistant-wellbeing",
+        "data": {
+          "username": "Användarnamn",
+          "password": "Lösenord"
+        }
+      },
+      "reauth_validate": {
+        "data": {
+          "password": "Lösenord"
+        },
+        "description": "Ange lösenord för {username}.",
+        "title": "Återautentisera Electrolux-kontot"
+      }
+    },
+    "error": {
+      "auth": "Användarnamn eller lösenord är felaktigt."
+    },
+    "abort": {
+      "single_instance_allowed": "Endast en instans är tillåten."
+    }
+  },
+  "options": {
+    "step": {
+      "user": {
+        "data": {
+          "scan_interval": "API-uppdateringsintervall (sekunder)",
+          "binary_sensor": "Binär sensor aktiverad",
+          "sensor": "Sensor aktiverad",
+          "switch": "Brytare aktiverad"
+        }
+      }
+    }
+  }
+}

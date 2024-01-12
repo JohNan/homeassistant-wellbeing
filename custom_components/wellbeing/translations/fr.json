@@ -13,7 +13,7 @@
           "password": "Password"
         },
         "description": "Enter the password for {username}.",
-        "title": "Reauthenticate an August account"
+        "title": "Reauthenticate an Electrolux account"
       }
     },
     "error": {
