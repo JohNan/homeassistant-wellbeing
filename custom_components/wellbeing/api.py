@@ -434,6 +434,13 @@ class WellbeingApiClient:
         result = await self._send_command(self._current_access_token, pnc_id, data)
         _LOGGER.debug(f"Set Fan Speed: {result}")
 
+    async def set_feature_state(self, pnc_id: str, feature: str, state: bool):
+        """Set the state of a feature (Ionizer, UILight, SafetyLock)."""
+        # Construct the command directly using the feature name
+        data = {feature: state}
+        await self._send_command(self._current_access_token, pnc_id, data)
+        _LOGGER.debug(f"Set {feature} State to {state}")
+
     async def _send_command(self, access_token: str, pnc_id: str, command: dict) -> None:
         """Get data from the API."""
         headers = {
