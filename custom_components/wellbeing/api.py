@@ -124,12 +124,12 @@ class Appliance:
                 device_class=SensorDeviceClass.CO2
             ),
             ApplianceSensor(
-                name=f"{FILTER_TYPE[data.get('FilterType_1', 0)]} Life",
+                name=f"{FILTER_TYPE.get(data.get('FilterType_1', 0), 'Unknown filter')} Life",
                 attr='FilterLife_1',
                 unit=PERCENTAGE
             ),
             ApplianceSensor(
-                name=f"{FILTER_TYPE[data.get('FilterType_2', 0)]} Life",
+                name=f"{FILTER_TYPE.get(data.get('FilterType_2', 0), 'Unknown filter')} Life",
                 attr='FilterLife_2',
                 unit=PERCENTAGE
             ),
@@ -145,7 +145,7 @@ class Appliance:
 
         a9_entities = [
             ApplianceSensor(
-                name=f"{FILTER_TYPE.get(data.get('FilterType', 0), 'Filter')} Life",
+                name=f"{FILTER_TYPE.get(data.get('FilterType', 0), 'Unknown filter')} Life",
                 attr='FilterLife',
                 unit=PERCENTAGE
             ),
