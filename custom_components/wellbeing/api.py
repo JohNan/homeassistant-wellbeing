@@ -30,6 +30,7 @@ APPLIANCES_URL = f"{API_URL}/appliances"
 
 FILTER_TYPE = {
     48: "BREEZE Complete air filter",
+    49: "CLEAN Ultrafine particle filter",
     51: "CARE Ultimate protect filter",
     64: "Breeze 360 filter",
     96: "Breeze 360 filter",
