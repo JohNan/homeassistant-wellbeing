@@ -151,8 +151,8 @@ class Appliance:
                 unit=PERCENTAGE
             ),
             ApplianceSensor(
-                name="CO2",
-                attr='CO2',
+                name="eCO2",
+                attr='ECO2',
                 unit=CONCENTRATION_PARTS_PER_MILLION,
                 device_class=SensorDeviceClass.CO2
             ),
