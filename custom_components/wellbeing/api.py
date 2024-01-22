@@ -35,6 +35,7 @@ FILTER_TYPE = {
     64: "Breeze 360 filter",
     96: "Breeze 360 filter",
     99: "Breeze 360 filter",
+    100: "Fresh 360 filter",
     192: "FRESH Odour protect filter",
     0: "Filter"
 }
