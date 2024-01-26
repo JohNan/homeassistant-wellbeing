@@ -33,6 +33,7 @@ FILTER_TYPE = {
     49: "CLEAN Ultrafine particle filter",
     51: "CARE Ultimate protect filter",
     64: "Breeze 360 filter",
+    67: "Breeze 360 filter",
     96: "Breeze 360 filter",
     99: "Breeze 360 filter",
     192: "FRESH Odour protect filter",
