@@ -120,12 +120,6 @@ class Appliance:
     def _create_entities(data):
         a7_entities = [
             ApplianceSensor(
-                name="eCO2",
-                attr='ECO2',
-                unit=CONCENTRATION_PARTS_PER_MILLION,
-                device_class=SensorDeviceClass.CO2
-            ),
-            ApplianceSensor(
                 name=f"{FILTER_TYPE.get(data.get('FilterType_1', 0), 'Unknown filter')} Life",
                 attr='FilterLife_1',
                 unit=PERCENTAGE
