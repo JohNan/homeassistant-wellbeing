@@ -149,13 +149,7 @@ class Appliance:
                 name=f"{FILTER_TYPE.get(data.get('FilterType', 0), 'Unknown filter')} Life",
                 attr='FilterLife',
                 unit=PERCENTAGE
-            ),
-            ApplianceSensor(
-                name="eCO2",
-                attr='ECO2',
-                unit=CONCENTRATION_PARTS_PER_MILLION,
-                device_class=SensorDeviceClass.CO2
-            ),
+            )
         ]
 
         common_entities = [
@@ -173,6 +167,12 @@ class Appliance:
                 name="TVOC",
                 attr='TVOC',
                 unit=CONCENTRATION_PARTS_PER_BILLION
+            ),
+            ApplianceSensor(
+                name="eCO2",
+                attr='ECO2',
+                unit=CONCENTRATION_PARTS_PER_MILLION,
+                device_class=SensorDeviceClass.CO2
             ),
             ApplianceSensor(
                 name="PM1",
