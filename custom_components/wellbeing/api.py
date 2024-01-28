@@ -36,6 +36,7 @@ FILTER_TYPE = {
     67: "Breeze 360 filter",
     96: "Breeze 360 filter",
     99: "Breeze 360 filter",
+    100: "Fresh 360 filter",
     192: "FRESH Odour protect filter",
     0: "Filter"
 }
@@ -119,12 +120,6 @@ class Appliance:
     def _create_entities(data):
         a7_entities = [
             ApplianceSensor(
-                name="eCO2",
-                attr='ECO2',
-                unit=CONCENTRATION_PARTS_PER_MILLION,
-                device_class=SensorDeviceClass.CO2
-            ),
-            ApplianceSensor(
                 name=f"{FILTER_TYPE.get(data.get('FilterType_1', 0), 'Unknown filter')} Life",
                 attr='FilterLife_1',
                 unit=PERCENTAGE
@@ -149,13 +144,7 @@ class Appliance:
                 name=f"{FILTER_TYPE.get(data.get('FilterType', 0), 'Unknown filter')} Life",
                 attr='FilterLife',
                 unit=PERCENTAGE
-            ),
-            ApplianceSensor(
-                name="CO2",
-                attr='CO2',
-                unit=CONCENTRATION_PARTS_PER_MILLION,
-                device_class=SensorDeviceClass.CO2
-            ),
+            )
         ]
 
         common_entities = [
@@ -173,6 +162,12 @@ class Appliance:
                 name="TVOC",
                 attr='TVOC',
                 unit=CONCENTRATION_PARTS_PER_BILLION
+            ),
+            ApplianceSensor(
+                name="eCO2",
+                attr='ECO2',
+                unit=CONCENTRATION_PARTS_PER_MILLION,
+                device_class=SensorDeviceClass.CO2
             ),
             ApplianceSensor(
                 name="PM1",
