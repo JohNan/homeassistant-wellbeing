@@ -144,7 +144,13 @@ class Appliance:
                 name=f"{FILTER_TYPE.get(data.get('FilterType', 0), 'Unknown filter')} Life",
                 attr='FilterLife',
                 unit=PERCENTAGE
-            )
+            ),
+            ApplianceSensor( 
+                 name="CO2", 
+                 attr='CO2', 
+                 unit=CONCENTRATION_PARTS_PER_MILLION, 
+                 device_class=SensorDeviceClass.CO2 
+             )
         ]
 
         common_entities = [
