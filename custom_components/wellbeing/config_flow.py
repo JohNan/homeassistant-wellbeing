@@ -91,8 +91,7 @@ class WellbeingFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     async def _test_credentials(self, username, password):
         """Return true if credentials is valid."""
         try:
-            session = async_create_clientsession(self.hass)
-            client = WellbeingApiClient(username, password, session)
+            client = WellbeingApiClient(username, password, self.hass)
             return await client.async_login()
         except Exception:  # pylint: disable=broad-except
             pass
