@@ -287,7 +287,7 @@ class WellbeingApiClient:
         self._password = password
         self._access_token = None
         self._token = None
-        self.hass = hass
+        self._hass = hass
         self._current_access_token = None
         self._token_expires = datetime.now()
         self.appliances = None
@@ -459,7 +459,7 @@ class WellbeingApiClient:
 
     async def api_wrapper(self, method: str, url: str, data: dict = {}, headers: dict = {}) -> dict:
         """Get information from the API."""
-        session = async_get_clientsession(self.hass)
+        session = async_get_clientsession(self._hass)
         try:
             async with async_timeout.timeout(TIMEOUT):
                 if method == "get":
