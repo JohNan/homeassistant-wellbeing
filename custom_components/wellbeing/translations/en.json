@@ -13,7 +13,7 @@
           "password": "Password"
         },
         "description": "Enter the password for {username}.",
-        "title": "Reauthenticate an August account"
+        "title": "Reauthenticate an Electrolux account"
       }
     },
     "error": {
@@ -27,7 +27,10 @@
     "step": {
       "user": {
         "data": {
-          "scan_interval": "API update interval (seconds)"
+          "scan_interval": "API update interval (seconds)",
+          "binary_sensor": "Binary sensor activated",
+          "sensor": "Sensor activated",
+          "switch": "Switch activated"
         }
       }
     }

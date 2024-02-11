@@ -3,7 +3,7 @@ import asyncio
 import logging
 import math
 
-from homeassistant.components.fan import FanEntity, SUPPORT_SET_SPEED, SUPPORT_PRESET_MODE
+from homeassistant.components.fan import FanEntity, FanEntityFeature
 from homeassistant.util.percentage import percentage_to_ranged_value, ranged_value_to_percentage
 from . import WellbeingDataUpdateCoordinator
 from .api import Mode
@@ -13,7 +13,7 @@ from .entity import WellbeingEntity
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
-SUPPORTED_FEATURES = SUPPORT_SET_SPEED | SUPPORT_PRESET_MODE
+SUPPORTED_FEATURES = FanEntityFeature.SET_SPEED | FanEntityFeature.PRESET_MODE
 
 PRESET_MODES = [
     Mode.OFF,
@@ -114,9 +114,18 @@ class WellbeingFan(WellbeingEntity, FanEntity):
     def is_on(self):
         return self.preset_mode is not Mode.OFF
 
-    async def async_turn_on(self, speed: str = None, percentage: int = None,
-                            preset_mode: str = None, **kwargs) -> None:
+    async def async_turn_on(self, speed: str = None, percentage: int = None, preset_mode: str = None, **kwargs) -> None:
         self._preset_mode = Mode(preset_mode or Mode.AUTO.value)
+
+        # Handle incorrect percentage
+        if percentage is not None and isinstance(percentage, str):
+            try:
+                percentage = int(percentage)
+            except ValueError:
+                _LOGGER.error(f"Invalid percentage value: {percentage}")
+                return
+
+        # Proceed with the provided or default percentage
         self._speed = math.floor(percentage_to_ranged_value(self._speed_range, percentage or 10))
         self.get_appliance.clear_mode()
         self.get_entity.clear_state()
@@ -126,6 +135,7 @@ class WellbeingFan(WellbeingEntity, FanEntity):
         await self.api.set_fan_speed(self.pnc_id, self._speed)
         await asyncio.sleep(10)
         await self.coordinator.async_request_refresh()
+
 
     async def async_turn_off(self, **kwargs) -> None:
         """Turn off the entity."""

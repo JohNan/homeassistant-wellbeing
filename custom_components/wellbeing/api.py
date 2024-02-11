@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import socket
+import json
 from datetime import datetime, timedelta
 from enum import Enum
 
@@ -11,8 +12,9 @@ import async_timeout
 from custom_components.wellbeing.const import SENSOR, FAN, BINARY_SENSOR
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.sensor import SensorDeviceClass
-from homeassistant.const import TEMP_CELSIUS, PERCENTAGE, CONCENTRATION_PARTS_PER_MILLION, \
+from homeassistant.const import UnitOfTemperature, PERCENTAGE, CONCENTRATION_PARTS_PER_MILLION, \
     CONCENTRATION_PARTS_PER_BILLION, CONCENTRATION_MICROGRAMS_PER_CUBIC_METER
+
 
 TIMEOUT = 10
 RETRIES = 3
@@ -28,10 +30,13 @@ APPLIANCES_URL = f"{API_URL}/appliances"
 
 FILTER_TYPE = {
     48: "BREEZE Complete air filter",
+    49: "CLEAN Ultrafine particle filter",
     51: "CARE Ultimate protect filter",
     64: "Breeze 360 filter",
+    67: "Breeze 360 filter",
     96: "Breeze 360 filter",
     99: "Breeze 360 filter",
+    100: "Fresh 360 filter",
     192: "FRESH Odour protect filter",
     0: "Filter"
 }
@@ -39,6 +44,10 @@ FILTER_TYPE = {
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
 HEADERS = {"Content-type": "application/json; charset=UTF-8"}
+
+class CustomComponent:
+    def get_translation(self, key):
+        return translations.get(key, key)
 
 class Mode(str, Enum):
     OFF = "PowerOff"
@@ -111,18 +120,12 @@ class Appliance:
     def _create_entities(data):
         a7_entities = [
             ApplianceSensor(
-                name="eCO2",
-                attr='ECO2',
-                unit=CONCENTRATION_PARTS_PER_MILLION,
-                device_class=SensorDeviceClass.CO2
-            ),
-            ApplianceSensor(
-                name=f"{FILTER_TYPE[data.get('FilterType_1', 0)]} Life",
+                name=f"{FILTER_TYPE.get(data.get('FilterType_1', 0), 'Unknown filter')} Life",
                 attr='FilterLife_1',
                 unit=PERCENTAGE
             ),
             ApplianceSensor(
-                name=f"{FILTER_TYPE[data.get('FilterType_2', 0)]} Life",
+                name=f"{FILTER_TYPE.get(data.get('FilterType_2', 0), 'Unknown filter')} Life",
                 attr='FilterLife_2',
                 unit=PERCENTAGE
             ),
@@ -138,16 +141,16 @@ class Appliance:
 
         a9_entities = [
             ApplianceSensor(
-                name=f"{FILTER_TYPE.get(data.get('FilterType', 0), 'Filter')} Life",
+                name=f"{FILTER_TYPE.get(data.get('FilterType', 0), 'Unknown filter')} Life",
                 attr='FilterLife',
                 unit=PERCENTAGE
             ),
-            ApplianceSensor(
-                name="CO2",
-                attr='CO2',
-                unit=CONCENTRATION_PARTS_PER_MILLION,
-                device_class=SensorDeviceClass.CO2
-            ),
+            ApplianceSensor( 
+                 name="CO2", 
+                 attr='CO2', 
+                 unit=CONCENTRATION_PARTS_PER_MILLION, 
+                 device_class=SensorDeviceClass.CO2 
+             )
         ]
 
         common_entities = [
@@ -158,13 +161,19 @@ class Appliance:
             ApplianceSensor(
                 name="Temperature",
                 attr='Temp',
-                unit=TEMP_CELSIUS,
+                unit=UnitOfTemperature.CELSIUS,
                 device_class=SensorDeviceClass.TEMPERATURE
             ),
             ApplianceSensor(
                 name="TVOC",
                 attr='TVOC',
                 unit=CONCENTRATION_PARTS_PER_BILLION
+            ),
+            ApplianceSensor(
+                name="eCO2",
+                attr='ECO2',
+                unit=CONCENTRATION_PARTS_PER_MILLION,
+                device_class=SensorDeviceClass.CO2
             ),
             ApplianceSensor(
                 name="PM1",
@@ -240,14 +249,22 @@ class Appliance:
 
     @property
     def speed_range(self) -> tuple:
-        if self.model == "WELLA7":
+        ## Electrolux Devices: 
+        if self.model == "WELLA5":
             return 1, 5
-        if self.model == "AX7":
+        if self.model == "WELLA7":
             return 1, 5
         if self.model == "PUREA9":
             return 1, 9
-        if self.model == "WELLA5":
+
+
+        ## AEG Devices:
+        if self.model == "AX5":
             return 1, 5
+        if self.model == "AX7":
+            return 1, 5
+        if self.model == "AX9":
+            return 1, 9
 
         return 0, 0
 
@@ -419,6 +436,13 @@ class WellbeingApiClient:
         }
         result = await self._send_command(self._current_access_token, pnc_id, data)
         _LOGGER.debug(f"Set Fan Speed: {result}")
+
+    async def set_feature_state(self, pnc_id: str, feature: str, state: bool):
+        """Set the state of a feature (Ionizer, UILight, SafetyLock)."""
+        # Construct the command directly using the feature name
+        data = {feature: state}
+        await self._send_command(self._current_access_token, pnc_id, data)
+        _LOGGER.debug(f"Set {feature} State to {state}")
 
     async def _send_command(self, access_token: str, pnc_id: str, command: dict) -> None:
         """Get data from the API."""
