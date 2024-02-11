@@ -10,10 +10,12 @@ import aiohttp
 import async_timeout
 
 from custom_components.wellbeing.const import SENSOR, FAN, BINARY_SENSOR
+from homeassistant.core import HomeAssistant
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.const import UnitOfTemperature, PERCENTAGE, CONCENTRATION_PARTS_PER_MILLION, \
     CONCENTRATION_PARTS_PER_BILLION, CONCENTRATION_MICROGRAMS_PER_CUBIC_METER
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 
 TIMEOUT = 10
@@ -145,11 +147,11 @@ class Appliance:
                 attr='FilterLife',
                 unit=PERCENTAGE
             ),
-            ApplianceSensor( 
-                 name="CO2", 
-                 attr='CO2', 
-                 unit=CONCENTRATION_PARTS_PER_MILLION, 
-                 device_class=SensorDeviceClass.CO2 
+            ApplianceSensor(
+                 name="CO2",
+                 attr='CO2',
+                 unit=CONCENTRATION_PARTS_PER_MILLION,
+                 device_class=SensorDeviceClass.CO2
              )
         ]
 
@@ -249,7 +251,7 @@ class Appliance:
 
     @property
     def speed_range(self) -> tuple:
-        ## Electrolux Devices: 
+        ## Electrolux Devices:
         if self.model == "WELLA5":
             return 1, 5
         if self.model == "WELLA7":
@@ -279,17 +281,17 @@ class Appliances:
 
 class WellbeingApiClient:
 
-    def __init__(self, username: str, password: str, session: aiohttp.ClientSession) -> None:
+    def __init__(self, username: str, password: str, hass: HomeAssistant) -> None:
         """Sample API Client."""
         self._username = username
         self._password = password
-        self._session = session
         self._access_token = None
         self._token = None
+        self._hass = hass
         self._current_access_token = None
         self._token_expires = datetime.now()
         self.appliances = None
-    
+
     async def _get_token(self) -> dict:
         json = {
             "clientId": CLIENT_ID,
@@ -301,7 +303,7 @@ class WellbeingApiClient:
             "Accept": "application/json"
         }
         return await self.api_wrapper("post", TOKEN_URL, json, headers)
-    
+
     async def _login(self, access_token: str) -> dict:
         credentials = {
             "username": self._username,
@@ -362,7 +364,7 @@ class WellbeingApiClient:
             self._current_access_token = None
             _LOGGER.error("AccessToken 1 is missing")
             return False
-        
+
         userToken = await self._login(access_token['accessToken'])
 
         if 'idToken' not in userToken:
@@ -376,7 +378,7 @@ class WellbeingApiClient:
             self._current_access_token = None
             _LOGGER.error("AccessToken 2 is missing")
             return False
-        
+
         _LOGGER.debug("Received new token sucssfully")
 
         self._token_expires = datetime.now() + timedelta(seconds=token['expiresIn'])
@@ -402,7 +404,7 @@ class WellbeingApiClient:
             modelName = appliance['applianceData']['modelName']
             applianceId = appliance['applianceId']
             applianceName = appliance['applianceData']['applianceName']
-        
+
             app = Appliance(applianceName, applianceId, modelName)
             appliance_info = await self._get_appliance_info(access_token, applianceId)
             _LOGGER.debug(f"Fetched data: {appliance_info}")
@@ -457,16 +459,17 @@ class WellbeingApiClient:
 
     async def api_wrapper(self, method: str, url: str, data: dict = {}, headers: dict = {}) -> dict:
         """Get information from the API."""
+        session = async_get_clientsession(self._hass)
         try:
             async with async_timeout.timeout(TIMEOUT):
                 if method == "get":
-                    response = await self._session.get(url, headers=headers)
+                    response = await session.get(url, headers=headers)
                     return await response.json()
                 elif method == "put":
-                    response = await self._session.put(url, headers=headers, json=data)
+                    response = await session.put(url, headers=headers, json=data)
                     return await response.json()
                 elif method == "post":
-                    response = await self._session.post(url, headers=headers, json=data)
+                    response = await session.post(url, headers=headers, json=data)
                     return await response.json()
                 else:
                     raise Exception("Unsupported http method '%s'" % method)

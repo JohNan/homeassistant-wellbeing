@@ -43,8 +43,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     username = entry.data.get(CONF_USERNAME)
     password = entry.data.get(CONF_PASSWORD)
 
-    session = async_get_clientsession(hass)
-    client = WellbeingApiClient(username, password, session)
+    client = WellbeingApiClient(username, password, hass)
 
     coordinator = WellbeingDataUpdateCoordinator(hass, client=client, update_interval=update_interval)
     if not await coordinator.async_login():
