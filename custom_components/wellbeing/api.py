@@ -463,13 +463,16 @@ class WellbeingApiClient:
         try:
             async with async_timeout.timeout(TIMEOUT):
                 if method == "get":
-                    response = await session.get(url, headers=headers)
+                    response = await session.get(url, headers=headers, json=data)
+                    response.raise_for_status()
                     return await response.json()
                 elif method == "put":
                     response = await session.put(url, headers=headers, json=data)
+                    response.raise_for_status()
                     return await response.json()
                 elif method == "post":
                     response = await session.post(url, headers=headers, json=data)
+                    response.raise_for_status()
                     return await response.json()
                 else:
                     raise Exception("Unsupported http method '%s'" % method)
@@ -484,6 +487,14 @@ class WellbeingApiClient:
         except (KeyError, TypeError) as exception:
             _LOGGER.error(
                 "Error parsing information from %s - %s",
+                url,
+                exception,
+            )
+        except aiohttp.ClientResponseError as exception:
+            _LOGGER.error(
+                "Error, got error %s (%s) from server %s - %s",
+                response.status,
+                response.reason,
                 url,
                 exception,
             )
