@@ -2,7 +2,6 @@
 import asyncio
 import logging
 import socket
-import json
 from datetime import datetime, timedelta
 from enum import Enum
 
@@ -17,12 +16,12 @@ from homeassistant.const import UnitOfTemperature, PERCENTAGE, CONCENTRATION_PAR
     CONCENTRATION_PARTS_PER_BILLION, CONCENTRATION_MICROGRAMS_PER_CUBIC_METER
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-
 TIMEOUT = 10
 RETRIES = 3
 CLIENT_ID = "ElxOneApp"
 CLIENT_SECRET = "8UKrsKD7jH9zvTV7rz5HeCLkit67Mmj68FvRVTlYygwJYy4dW6KF2cVLPKeWzUQUd6KJMtTifFf4NkDnjI7ZLdfnwcPtTSNtYvbP7OzEkmQD9IjhMOf5e1zeAQYtt2yN"
 X_API_KEY = "2AMqwEV5MqVhTKrRCyYfVF8gmKrd2rAmp7cUsfky"
+USER_AGENT = "Electrolux/2.9 android/9"
 
 BASE_URL = "https://api.ocp.electrolux.one"
 TOKEN_URL = f"{BASE_URL}/one-account-authorization/api/v1/token"
@@ -44,12 +43,6 @@ FILTER_TYPE = {
 }
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
-
-HEADERS = {"Content-type": "application/json; charset=UTF-8"}
-
-class CustomComponent:
-    def get_translation(self, key):
-        return translations.get(key, key)
 
 class Mode(str, Enum):
     OFF = "PowerOff"
@@ -300,7 +293,8 @@ class WellbeingApiClient:
         }
         headers = {
             "Content-Type": "application/json",
-            "Accept": "application/json"
+            "Accept": "application/json",
+            "User-Agent": USER_AGENT
         }
         return await self.api_wrapper("post", TOKEN_URL, json, headers)
 
@@ -313,20 +307,22 @@ class WellbeingApiClient:
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
             "Accept": "application/json",
+            "User-Agent": USER_AGENT,
             "x-api-key": X_API_KEY
         }
         return await self.api_wrapper("post", AUTHENTICATION_URL, credentials, headers)
 
-    async def _get_token2(self, idToken: str, countryCode: str) -> dict:
+    async def _get_token2(self, id_token: str, country_code: str) -> dict:
         credentials = {
             "clientId": CLIENT_ID,
-            "idToken": idToken,
+            "idToken": id_token,
             "grantType": "urn:ietf:params:oauth:grant-type:token-exchange"
         }
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "Origin-Country-Code": countryCode
+            "User-Agent": USER_AGENT,
+            "Origin-Country-Code": country_code
         }
         return await self.api_wrapper("post", TOKEN_URL, credentials, headers)
 
@@ -335,6 +331,7 @@ class WellbeingApiClient:
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
             "Accept": "application/json",
+            "User-Agent": USER_AGENT,
             "x-api-key": X_API_KEY
         }
         return await self.api_wrapper("get", APPLIANCES_URL, headers=headers)
@@ -344,6 +341,7 @@ class WellbeingApiClient:
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
             "Accept": "application/json",
+            "User-Agent": USER_AGENT,
             "x-api-key": X_API_KEY
         }
         url = f"{APPLIANCES_URL}/{pnc_id}/info"
@@ -452,6 +450,7 @@ class WellbeingApiClient:
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
             "Accept": "application/json",
+            "User-Agent": USER_AGENT,
             "x-api-key": X_API_KEY
         }
 
