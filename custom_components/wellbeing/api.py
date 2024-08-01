@@ -296,8 +296,7 @@ class WellbeingApiClient:
         }
         headers = {
             "Content-Type": "application/json",
-            "Accept": "application/json",
-            "User-Agent": USER_AGENT
+            "Accept": "application/json"
         }
         return await self.api_wrapper("post", TOKEN_URL, json, headers)
 
@@ -310,7 +309,6 @@ class WellbeingApiClient:
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "User-Agent": USER_AGENT,
             "x-api-key": X_API_KEY
         }
         return await self.api_wrapper("post", AUTHENTICATION_URL, credentials, headers)
@@ -324,7 +322,6 @@ class WellbeingApiClient:
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "User-Agent": USER_AGENT,
             "Origin-Country-Code": country_code
         }
         return await self.api_wrapper("post", TOKEN_URL, credentials, headers)
@@ -334,7 +331,6 @@ class WellbeingApiClient:
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "User-Agent": USER_AGENT,
             "x-api-key": X_API_KEY
         }
         return await self.api_wrapper("get", APPLIANCES_URL, headers=headers)
@@ -344,7 +340,6 @@ class WellbeingApiClient:
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "User-Agent": USER_AGENT,
             "x-api-key": X_API_KEY
         }
         url = f"{APPLIANCES_URL}/{pnc_id}/info"
@@ -453,7 +448,6 @@ class WellbeingApiClient:
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "User-Agent": USER_AGENT,
             "x-api-key": X_API_KEY
         }
 
