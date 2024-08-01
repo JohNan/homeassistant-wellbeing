@@ -331,7 +331,6 @@ class WellbeingApiClient:
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
             "Accept": "application/json",
-            # "User-Agent": USER_AGENT,
             "x-api-key": X_API_KEY
         }
         return await self.api_wrapper("get", APPLIANCES_URL, headers=headers)
