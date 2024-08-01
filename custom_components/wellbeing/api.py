@@ -322,7 +322,6 @@ class WellbeingApiClient:
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
-            # "User-Agent": USER_AGENT,
             "Origin-Country-Code": country_code
         }
         return await self.api_wrapper("post", TOKEN_URL, credentials, headers)
