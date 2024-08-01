@@ -296,7 +296,7 @@ class WellbeingApiClient:
         }
         headers = {
             "Content-Type": "application/json",
-            "Accept": "application/json",
+            "Accept": "application/json"
         }
         return await self.api_wrapper("post", TOKEN_URL, json, headers)
 
