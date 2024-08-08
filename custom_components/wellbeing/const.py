@@ -23,6 +23,7 @@ CONF_ENABLED = "enabled"
 CONF_USERNAME = "username"
 CONF_PASSWORD = "password"
 CONF_SCAN_INTERVAL = "scan_interval"
+CONF_REFRESH_TOKEN = "refresh_token"
 
 # Defaults
 DEFAULT_NAME = DOMAIN

@@ -6,9 +6,14 @@ import logging
 
 import homeassistant.helpers.config_validation as cv
 from homeassistant import config_entries
+from homeassistant.const import CONF_API_KEY, CONF_ACCESS_TOKEN
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
-from homeassistant.helpers.aiohttp_client import async_create_clientsession
+from homeassistant.helpers.aiohttp_client import async_create_clientsession, async_get_clientsession
+from pyelectroluxgroup.api import ElectroluxHubAPI
+from pyelectroluxgroup.token_manager import TokenManager
+
+from . import CONF_REFRESH_TOKEN
 from .api import WellbeingApiClient
 from .const import CONF_PASSWORD, CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
 from .const import CONF_USERNAME
@@ -81,21 +86,34 @@ class WellbeingFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_USERNAME): str,
-                    vol.Required(CONF_PASSWORD): str
+                    vol.Required(CONF_API_KEY): str,
+                    vol.Required(CONF_ACCESS_TOKEN): str,
+                    vol.Required(CONF_REFRESH_TOKEN): str,
                 }
             ),
             errors=self._errors,
         )
 
-    async def _test_credentials(self, username, password):
+    async def _test_credentials(self, access_token: str, refresh_token: str, api_key: str):
         """Return true if credentials is valid."""
         try:
-            client = WellbeingApiClient(username, password, self.hass)
-            return await client.async_login()
+            token_manager = WellBeingConfigFlowTokenManager(access_token, refresh_token, api_key)
+            client = ElectroluxHubAPI(
+                session=async_get_clientsession(self.hass),
+                token_manager=token_manager
+            )
+            return await client.async_get_appliances()
         except Exception:  # pylint: disable=broad-except
             pass
         return False
+
+class WellBeingConfigFlowTokenManager(TokenManager):
+    """TokenManager implementation for config flow """
+    def __init__(self, access_token: str, refresh_token: str, api_key: str):
+        super().__init__(access_token, refresh_token, api_key)
+
+    def update(self, access_token: str, refresh_token: str, api_key: str | None = None):
+        pass
 
 
 class WellbeingOptionsFlowHandler(config_entries.OptionsFlow):
