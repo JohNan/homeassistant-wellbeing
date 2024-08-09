@@ -1,18 +1,21 @@
 """Adds config flow for Wellbeing."""
+import logging
 from typing import Mapping, Any
 
-import voluptuous as vol
-import logging
-
 import homeassistant.helpers.config_validation as cv
+import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.config_entries import ConfigFlowResult, ConfigEntry
+from homeassistant.const import CONF_API_KEY, CONF_ACCESS_TOKEN
 from homeassistant.core import callback
-from homeassistant.data_entry_flow import FlowResult
-from homeassistant.helpers.aiohttp_client import async_create_clientsession
-from .api import WellbeingApiClient
-from .const import CONF_PASSWORD, CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
-from .const import CONF_USERNAME
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from pyelectroluxgroup.api import ElectroluxHubAPI
+from pyelectroluxgroup.token_manager import TokenManager
+
+from . import CONF_REFRESH_TOKEN
+from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, CONFIG_FLOW_TITLE
 from .const import DOMAIN
+from .temp_credentials import TEMP_API_KEY, TEMP_ACCESS_TOKEN, TEMP_REFRESH_TOKEN
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
@@ -24,50 +27,80 @@ class WellbeingFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
     def __init__(self):
         """Initialize."""
+        self.entry: ConfigEntry
         self._errors = {}
+        self._token_manager = WellBeingConfigFlowTokenManager()
 
-    async def async_step_user(self, user_input=None):
+    async def async_step_user(
+            self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Handle a flow initialized by the user."""
         self._errors = {}
-
+        _LOGGER.debug(user_input)
         if user_input is not None:
-            valid = await self._test_credentials(
-                user_input[CONF_USERNAME], user_input[CONF_PASSWORD]
-            )
-            if valid:
-                return self.async_create_entry(
-                    title=user_input[CONF_USERNAME], data=user_input
+            try:
+                await self._test_credentials(
+                    user_input[CONF_ACCESS_TOKEN],
+                    user_input[CONF_REFRESH_TOKEN],
+                    user_input[CONF_API_KEY]
                 )
-            else:
-                self._errors["base"] = "auth"
 
-            return await self._show_config_form(user_input)
+                # Copy the maybe possibly credentials
+                user_input[CONF_ACCESS_TOKEN] = self._token_manager.access_token
+                user_input[CONF_REFRESH_TOKEN] = self._token_manager.refresh_token
+            except Exception as exp:  # pylint: disable=broad-except
+                _LOGGER.error("Validating credentials failed - %s", exp)
+                self._errors["base"] = "auth"
+                return await self._show_config_form(user_input)
+
+            return self.async_create_entry(
+                title=CONFIG_FLOW_TITLE,
+                data=user_input
+            )
 
         return await self._show_config_form(user_input)
 
-    async def async_step_reauth(self, entry_data: Mapping[str, Any]) -> FlowResult:
+    async def async_step_reauth(
+            self, entry_data: Mapping[str, Any]
+    ) -> ConfigFlowResult:
         """Handle configuration by re-auth."""
+        if entry := self.hass.config_entries.async_get_entry(self.context["entry_id"]):
+            self.entry = entry
         return await self.async_step_reauth_validate()
 
     async def async_step_reauth_validate(self, user_input=None):
         """Handle reauth and validation."""
-        errors = {}
+        errors: dict[str, str] = {}
+
         if user_input is not None:
-            return await self._test_credentials(
-                user_input[CONF_USERNAME], user_input[CONF_PASSWORD]
+            try:
+                await self._test_credentials(
+                    user_input[CONF_ACCESS_TOKEN],
+                    user_input[CONF_REFRESH_TOKEN],
+                    user_input[CONF_API_KEY]
+                )
+
+                # Copy the maybe possibly credentials
+                user_input[CONF_ACCESS_TOKEN] = self._token_manager.access_token
+                user_input[CONF_REFRESH_TOKEN] = self._token_manager.refresh_token
+            except Exception as exp:  # pylint: disable=broad-except
+                _LOGGER.error("Validating credentials failed - %s", exp)
+
+            self.hass.config_entries.async_update_entry(
+                self.entry, data={**user_input}
             )
+            return self.async_abort(reason="reauth_successful")
 
         return self.async_show_form(
             step_id="reauth_validate",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_PASSWORD): str,
+                    vol.Required(CONF_API_KEY, default=TEMP_API_KEY): str,
+                    vol.Required(CONF_ACCESS_TOKEN, default=TEMP_ACCESS_TOKEN): str,
+                    vol.Required(CONF_REFRESH_TOKEN, default=TEMP_REFRESH_TOKEN): str,
                 }
             ),
             errors=errors,
-            description_placeholders={
-                CONF_USERNAME: user_input[CONF_USERNAME],
-            },
         )
 
     @staticmethod
@@ -81,21 +114,32 @@ class WellbeingFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_USERNAME): str,
-                    vol.Required(CONF_PASSWORD): str
+                    vol.Required(CONF_API_KEY, default=TEMP_API_KEY): str,
+                    vol.Required(CONF_ACCESS_TOKEN, default=TEMP_ACCESS_TOKEN): str,
+                    vol.Required(CONF_REFRESH_TOKEN, default=TEMP_REFRESH_TOKEN): str,
                 }
             ),
             errors=self._errors,
         )
 
-    async def _test_credentials(self, username, password):
+    async def _test_credentials(self, access_token: str, refresh_token: str, api_key: str):
         """Return true if credentials is valid."""
-        try:
-            client = WellbeingApiClient(username, password, self.hass)
-            return await client.async_login()
-        except Exception:  # pylint: disable=broad-except
-            pass
-        return False
+
+        self._token_manager.update(access_token, refresh_token, api_key)
+        client = ElectroluxHubAPI(
+            session=async_get_clientsession(self.hass),
+            token_manager=self._token_manager
+        )
+        await client.async_get_appliances()
+
+class WellBeingConfigFlowTokenManager(TokenManager):
+    """TokenManager implementation for config flow """
+
+    def __init__(self):
+        pass
+
+    def update(self, access_token: str, refresh_token: str, api_key: str | None = None):
+        super().update(access_token, refresh_token, api_key)
 
 
 class WellbeingOptionsFlowHandler(config_entries.OptionsFlow):
@@ -133,5 +177,6 @@ class WellbeingOptionsFlowHandler(config_entries.OptionsFlow):
     async def _update_options(self):
         """Update config entry options."""
         return self.async_create_entry(
-            title=self.config_entry.data.get(CONF_USERNAME), data=self.options
+            title=CONFIG_FLOW_TITLE,
+            data=self.options
         )

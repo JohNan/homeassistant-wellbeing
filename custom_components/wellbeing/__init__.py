@@ -9,14 +9,19 @@ import logging
 from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_API_KEY, CONF_ACCESS_TOKEN
 from homeassistant.core import Config
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady, ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.helpers.update_coordinator import UpdateFailed
+from homeassistant.util.hass_dict import HassKey
+from pyelectroluxgroup.api import ElectroluxHubAPI
+from pyelectroluxgroup.token_manager import TokenManager
+
 from .api import WellbeingApiClient
-from .const import CONF_PASSWORD, CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
+from .const import CONF_PASSWORD, CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, CONF_REFRESH_TOKEN
 from .const import CONF_USERNAME
 from .const import DOMAIN
 from .const import PLATFORMS
@@ -40,14 +45,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     else:
         update_interval = timedelta(seconds=DEFAULT_SCAN_INTERVAL)
 
-    username = entry.data.get(CONF_USERNAME)
-    password = entry.data.get(CONF_PASSWORD)
+    token_manager = WellBeingTokenManager(hass, entry)
+    try:
+        hub = ElectroluxHubAPI(
+            session=async_get_clientsession(hass),
+            token_manager=token_manager
+        )
+    except Exception:
+        raise ConfigEntryAuthFailed
 
-    client = WellbeingApiClient(username, password, hass)
+    client = WellbeingApiClient(hub)
 
     coordinator = WellbeingDataUpdateCoordinator(hass, client=client, update_interval=update_interval)
-    if not await coordinator.async_login():
-        raise ConfigEntryAuthFailed
 
     await coordinator.async_config_entry_first_refresh()
 
@@ -73,24 +82,11 @@ class WellbeingDataUpdateCoordinator(DataUpdateCoordinator):
 
         super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=update_interval)
 
-    async def async_login(self) -> bool:
-        """Login to Wellbeing."""
-        try:
-            await self.api.async_login()
-        except Exception as ex:
-            _LOGGER.error(
-                "Could not log in to WellBeing, %s. Will try again after %d",
-                ex,
-                self.update_interval.seconds
-            )
-            return False
-
-        return True
 
     async def _async_update_data(self):
         """Update data via library."""
         try:
-            appliances = await self.api.async_get_data()
+            appliances = await self.api.async_get_appliances()
             return {
                 "appliances": appliances
             }
@@ -120,3 +116,25 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload config entry."""
     await async_unload_entry(hass, entry)
     await async_setup_entry(hass, entry)
+
+class WellBeingTokenManager(TokenManager):
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
+        self._hass = hass
+        self._entry = entry
+        api_key = entry.data.get(CONF_API_KEY)
+        refresh_token = entry.data.get(CONF_REFRESH_TOKEN)
+        access_token = entry.data.get(CONF_ACCESS_TOKEN)
+        super().__init__(access_token, refresh_token, api_key)
+
+    def update(self, access_token: str, refresh_token: str, api_key: str | None = None):
+        super().update(access_token, refresh_token, api_key)
+
+        self._hass.config_entries.async_update_entry(
+            self._entry,
+            data={
+                **self._entry.data,
+                CONF_API_KEY: api_key if api_key is not None else api_key,
+                CONF_REFRESH_TOKEN: refresh_token,
+                CONF_ACCESS_TOKEN: access_token
+            },
+        )

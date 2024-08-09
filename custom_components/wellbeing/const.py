@@ -1,5 +1,6 @@
 """Constants for Wellbeing."""
 # Base component constants
+CONFIG_FLOW_TITLE = "Electrolux Wellbeing"
 NAME = "Wellbeing"
 DOMAIN = "wellbeing"
 DOMAIN_DATA = f"{DOMAIN}_data"
@@ -23,6 +24,7 @@ CONF_ENABLED = "enabled"
 CONF_USERNAME = "username"
 CONF_PASSWORD = "password"
 CONF_SCAN_INTERVAL = "scan_interval"
+CONF_REFRESH_TOKEN = "refresh_token"
 
 # Defaults
 DEFAULT_NAME = DOMAIN

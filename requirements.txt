@@ -1,0 +1,3 @@
+homeassistant==2024.8.0
+aiohttp
+pyelectroluxgroup @ git+https://github.com/JohNan/pyelectroluxgroup@johnan/update-project

@@ -7,6 +7,6 @@
   "documentation": "https://github.com/JohNan/homeassistant-wellbeing",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/JohNan/homeassistant-wellbeing/issues",
-  "requirements": [],
+  "requirements": ["pyelectroluxgroup==0.2.0"],
   "version": "v0.0.0"
 }
