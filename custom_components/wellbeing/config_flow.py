@@ -15,7 +15,6 @@ from pyelectroluxgroup.token_manager import TokenManager
 from . import CONF_REFRESH_TOKEN
 from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, CONFIG_FLOW_TITLE
 from .const import DOMAIN
-from .temp_credentials import TEMP_API_KEY, TEMP_ACCESS_TOKEN, TEMP_REFRESH_TOKEN
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
@@ -95,9 +94,9 @@ class WellbeingFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="reauth_validate",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_API_KEY, default=TEMP_API_KEY): str,
-                    vol.Required(CONF_ACCESS_TOKEN, default=TEMP_ACCESS_TOKEN): str,
-                    vol.Required(CONF_REFRESH_TOKEN, default=TEMP_REFRESH_TOKEN): str,
+                    vol.Required(CONF_API_KEY): str,
+                    vol.Required(CONF_ACCESS_TOKEN): str,
+                    vol.Required(CONF_REFRESH_TOKEN): str,
                 }
             ),
             errors=errors,
@@ -114,9 +113,9 @@ class WellbeingFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_API_KEY, default=TEMP_API_KEY): str,
-                    vol.Required(CONF_ACCESS_TOKEN, default=TEMP_ACCESS_TOKEN): str,
-                    vol.Required(CONF_REFRESH_TOKEN, default=TEMP_REFRESH_TOKEN): str,
+                    vol.Required(CONF_API_KEY): str,
+                    vol.Required(CONF_ACCESS_TOKEN): str,
+                    vol.Required(CONF_REFRESH_TOKEN): str,
                 }
             ),
             errors=self._errors,
