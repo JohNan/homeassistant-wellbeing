@@ -1,0 +1,43 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "Als u hulp nodig hebt met de configuratie, kijk dan hier: https://github.com/JohNan/homeassistant-wellbeing",
+        "data": {
+          "api_key": "API key",
+          "refresh_token": "Refresh Token",
+          "access_token": "Access Token"
+        }
+      },
+      "reauth_validate": {
+        "data": {
+          "api_key": "API key",
+          "refresh_token": "Refresh Token",
+          "access_token": "Access Token"
+        },
+        "description": "Controleer of de informatie correct is."
+        "title": "Opnieuw authenticeren via de Electrolux API"
+      }
+    },
+    "error": {
+      "auth": "Authenticatie mislukt",
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+      "reauth_unsuccessful": "De herauthenticatie is mislukt. Verwijder de integratie en stel deze opnieuw in."
+    },
+    "abort": {
+      "single_instance_allowed": "Er is slechts één connectie toegestaan."
+    }
+  },
+  "options": {
+    "step": {
+      "user": {
+        "data": {
+          "scan_interval": "API update interval (seconden)",
+          "binary_sensor": "Binaire sensor geactiveerd",
+          "sensor": "Sensor geactiveerd",
+          "switch": "Schakelaar geactiveerd"
+        }
+      }
+    }
+  }
+}
