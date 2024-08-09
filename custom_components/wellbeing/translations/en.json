@@ -4,20 +4,25 @@
       "user": {
         "description": "If you need help with the configuration have a look here: https://github.com/JohNan/homeassistant-wellbeing",
         "data": {
-          "username": "Username",
-          "password": "Password"
+          "api_key": "API key",
+          "refresh_token": "Refresh Token",
+          "access_token": "Access Token"
         }
       },
       "reauth_validate": {
         "data": {
-          "password": "Password"
+          "api_key": "API key",
+          "refresh_token": "Refresh Token",
+          "access_token": "Access Token"
         },
-        "description": "Enter the password for {username}.",
-        "title": "Reauthenticate an Electrolux account"
+        "description": "Check that the information is correct.",
+        "title": "Re-authenticate against the Electrolux API"
       }
     },
     "error": {
-      "auth": "Username/Password is wrong."
+      "auth": "Authentication failed",
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+      "reauth_unsuccessful": "Re-authentication was unsuccessful, please remove the integration and set it up again."
     },
     "abort": {
       "single_instance_allowed": "Only a single instance is allowed."

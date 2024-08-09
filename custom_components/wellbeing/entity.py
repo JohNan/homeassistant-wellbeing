@@ -51,6 +51,7 @@ class WellbeingEntity(CoordinatorEntity):
         """Return the state attributes."""
         return {
             "integration": DOMAIN,
+            "capabilities": [key for key, value in self.get_appliance.capabilities.items() if value['access'] == 'readwrite']
         }
 
     @property

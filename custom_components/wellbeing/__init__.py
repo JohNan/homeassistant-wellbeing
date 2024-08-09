@@ -45,14 +45,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     else:
         update_interval = timedelta(seconds=DEFAULT_SCAN_INTERVAL)
 
-    username = entry.data.get(CONF_USERNAME)
-    password = entry.data.get(CONF_PASSWORD)
-
     token_manager = WellBeingTokenManager(hass, entry)
-    client = ElectroluxHubAPI(
-        session=async_get_clientsession(hass),
-        token_manager=token_manager
-    )
+    try:
+        hub = ElectroluxHubAPI(
+            session=async_get_clientsession(hass),
+            token_manager=token_manager
+        )
+    except Exception:
+        raise ConfigEntryAuthFailed
+
+    client = WellbeingApiClient(hub)
 
     coordinator = WellbeingDataUpdateCoordinator(hass, client=client, update_interval=update_interval)
 
@@ -73,7 +75,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 class WellbeingDataUpdateCoordinator(DataUpdateCoordinator):
     """Class to manage fetching data from the API."""
 
-    def __init__(self, hass: HomeAssistant, client: ElectroluxHubAPI, update_interval: timedelta) -> None:
+    def __init__(self, hass: HomeAssistant, client: WellbeingApiClient, update_interval: timedelta) -> None:
         """Initialize."""
         self.api = client
         self.platforms = []
@@ -125,10 +127,12 @@ class WellBeingTokenManager(TokenManager):
         super().__init__(access_token, refresh_token, api_key)
 
     def update(self, access_token: str, refresh_token: str, api_key: str | None = None):
+        super().update(access_token, refresh_token, api_key)
+
         self._hass.config_entries.async_update_entry(
             self._entry,
             data={
-                **self._.data,
+                **self._entry.data,
                 CONF_API_KEY: api_key if api_key is not None else api_key,
                 CONF_REFRESH_TOKEN: refresh_token,
                 CONF_ACCESS_TOKEN: access_token

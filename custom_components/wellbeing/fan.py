@@ -46,7 +46,7 @@ class WellbeingFan(WellbeingEntity, FanEntity):
         self._speed = self.get_entity.state
 
     @property
-    def _speed_range(self) -> tuple:
+    def _speed_range(self) -> tuple[float, float]:
         return self.get_appliance.speed_range
 
     @property

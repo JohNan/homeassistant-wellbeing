@@ -142,3 +142,4 @@ dmypy.json
 .pyre/
 
 /config
+temp_credentials.py

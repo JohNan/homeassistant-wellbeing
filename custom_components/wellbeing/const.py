@@ -1,5 +1,6 @@
 """Constants for Wellbeing."""
 # Base component constants
+CONFIG_FLOW_TITLE = "Electrolux Wellbeing"
 NAME = "Wellbeing"
 DOMAIN = "wellbeing"
 DOMAIN_DATA = f"{DOMAIN}_data"
