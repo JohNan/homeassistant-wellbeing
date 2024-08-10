@@ -85,10 +85,10 @@ class WellbeingFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             except Exception as exp:  # pylint: disable=broad-except
                 _LOGGER.error("Validating credentials failed - %s", exp)
 
-            self.hass.config_entries.async_update_entry(
-                self.entry, data={**user_input}
+            return self.async_update_reload_and_abort(
+                self.entry,
+                data={**user_input} ,
             )
-            return self.async_abort(reason="reauth_successful")
 
         return self.async_show_form(
             step_id="reauth_validate",
