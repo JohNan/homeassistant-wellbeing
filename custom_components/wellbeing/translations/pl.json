@@ -4,20 +4,25 @@
       "user": {
         "description": "Jeśli potrzebujesz pomocy z konfiguracją zajrzyj tutaj: https://github.com/JohNan/homeassistant-wellbeing",
         "data": {
-          "username": "Nazwa użytkownika",
-          "password": "Hasło"
+          "api_key": "Klucz API",
+          "refresh_token": "Token Odświeżania (Refresh Token)",
+          "access_token": "Token Dostępu (Access Token)"
         }
       },
       "reauth_validate": {
         "data": {
-          "password": "Password"
+          "api_key": "Klucz API",
+          "refresh_token": "Token Odświeżania (Refresh Token)",
+          "access_token": "Token Dostępu (Access Token)"
         },
-        "description": "Enter the password for {username}.",
-        "title": "Reauthenticate an Electrolux account"
+        "description": "Upewnij się, że podane dane są poprawne.",
+        "title": "Re-autentykuj z Electrolux API"
       }
     },
     "error": {
-      "auth": "Nazwa użytkownika/Hasło są złe."
+      "auth": "Autentykacja nieudana",
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+      "reauth_unsuccessful": "Re-autentykacja nie powiodła się, proszę usunąć integrację i skonfigurować ją ponownie."
     },
     "abort": {
       "single_instance_allowed": "Tylko jedna instancja jest dozwolona."
@@ -27,7 +32,10 @@
     "step": {
       "user": {
         "data": {
-          "scan_interval": "Interwał aktualizacji API (w sekundach)"
+          "scan_interval": "Interwał aktualizacji API (w sekundach)",
+          "binary_sensor": "Sensor binarny aktywowany",
+          "sensor": "Sensor aktywowany",
+          "switch": "Przełącznik aktywowany"
         }
       }
     }
