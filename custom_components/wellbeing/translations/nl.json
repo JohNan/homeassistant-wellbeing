@@ -15,7 +15,7 @@
           "refresh_token": "Refresh Token",
           "access_token": "Access Token"
         },
-        "description": "Controleer of de informatie correct is."
+        "description": "Controleer of de informatie correct is.",
         "title": "Opnieuw authenticeren via de Electrolux API"
       }
     },
