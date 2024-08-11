@@ -114,8 +114,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload config entry."""
-    await async_unload_entry(hass, entry)
-    await async_setup_entry(hass, entry)
+    await hass.config_entries.async_reload(entry.entry_id)
 
 class WellBeingTokenManager(TokenManager):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
@@ -133,7 +132,6 @@ class WellBeingTokenManager(TokenManager):
             self._entry,
             data={
                 **self._entry.data,
-                CONF_API_KEY: api_key if api_key is not None else api_key,
                 CONF_REFRESH_TOKEN: refresh_token,
                 CONF_ACCESS_TOKEN: access_token
             },
