@@ -110,10 +110,10 @@ class WellBeingTokenManager(TokenManager):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
         self._hass = hass
         self._entry = entry
-        self.api_key = entry.data.get(CONF_API_KEY)
+        api_key = entry.data.get(CONF_API_KEY)
         refresh_token = entry.data.get(CONF_REFRESH_TOKEN)
         access_token = entry.data.get(CONF_ACCESS_TOKEN)
-        super().__init__(access_token, refresh_token, self.api_key)
+        super().__init__(access_token, refresh_token, api_key)
 
     def update(self, access_token: str, refresh_token: str, api_key: str | None = None):
         super().update(access_token, refresh_token, api_key)
