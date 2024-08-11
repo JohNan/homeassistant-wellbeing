@@ -132,7 +132,6 @@ class WellBeingTokenManager(TokenManager):
             self._entry,
             data={
                 **self._entry.data,
-                CONF_API_KEY: api_key if api_key is not None else api_key,
                 CONF_REFRESH_TOKEN: refresh_token,
                 CONF_ACCESS_TOKEN: access_token
             },
