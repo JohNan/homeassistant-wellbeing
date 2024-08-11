@@ -94,9 +94,24 @@ class WellbeingFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="reauth_validate",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_API_KEY): str,
-                    vol.Required(CONF_ACCESS_TOKEN): str,
-                    vol.Required(CONF_REFRESH_TOKEN): str,
+                    vol.Required(
+                        CONF_API_KEY, 
+                        default=self.entry.data.get(
+                            CONF_API_KEY, ""
+                        )
+                    ): str,
+                    vol.Required(
+                        CONF_ACCESS_TOKEN,
+                        default=self.entry.data.get(
+                            CONF_ACCESS_TOKEN, ""
+                        )
+                    ): str,
+                    vol.Required(
+                        CONF_REFRESH_TOKEN,
+                        default=self.entry.data.get(
+                            CONF_REFRESH_TOKEN, ""
+                        )
+                    ): str,
                 }
             ),
             errors=errors,
