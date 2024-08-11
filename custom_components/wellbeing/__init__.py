@@ -66,6 +66,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     return True
 
 
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Handle removal of an entry."""
+    coordinator = hass.data[DOMAIN][entry.entry_id]
+    unloaded = all(
+        await asyncio.gather(
+            *[
+                hass.config_entries.async_forward_entry_unload(entry, platform)
+                for platform in PLATFORMS
+                if platform in coordinator.platforms
+            ]
+        )
+    )
+    if unloaded:
+        hass.data[DOMAIN].pop(entry.entry_id)
+
+    return unloaded
+
+
 class WellbeingDataUpdateCoordinator(DataUpdateCoordinator):
     """Class to manage fetching data from the API."""
 
@@ -88,44 +106,26 @@ class WellbeingDataUpdateCoordinator(DataUpdateCoordinator):
             raise UpdateFailed() from exception
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Handle removal of an entry."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
-    unloaded = all(
-        await asyncio.gather(
-            *[
-                hass.config_entries.async_forward_entry_unload(entry, platform)
-                for platform in PLATFORMS
-                if platform in coordinator.platforms
-            ]
-        )
-    )
-    if unloaded:
-        hass.data[DOMAIN].pop(entry.entry_id)
-
-    return unloaded
-
-
-async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload config entry."""
-    await hass.config_entries.async_reload(entry.entry_id)
-
 class WellBeingTokenManager(TokenManager):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
         self._hass = hass
         self._entry = entry
-        api_key = entry.data.get(CONF_API_KEY)
+        self.api_key = entry.data.get(CONF_API_KEY)
         refresh_token = entry.data.get(CONF_REFRESH_TOKEN)
         access_token = entry.data.get(CONF_ACCESS_TOKEN)
-        super().__init__(access_token, refresh_token, api_key)
+        super().__init__(access_token, refresh_token, self.api_key)
 
     def update(self, access_token: str, refresh_token: str, api_key: str | None = None):
         super().update(access_token, refresh_token, api_key)
-
+        _LOGGER.debug("Tokens updated")
+        _LOGGER.debug(f"Api key: {api_key} : {self.api_key}")
+        _LOGGER.debug(f"Access token: {access_token}")
+        _LOGGER.debug(f"Refresh token: {refresh_token}")
+        
         self._hass.config_entries.async_update_entry(
             self._entry,
             data={
-                **self._entry.data,
+                CONF_API_KEY: self.api_key,
                 CONF_REFRESH_TOKEN: refresh_token,
                 CONF_ACCESS_TOKEN: access_token
             },
