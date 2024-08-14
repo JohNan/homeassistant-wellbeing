@@ -4,16 +4,16 @@ import logging
 import math
 
 from homeassistant.components.fan import FanEntity, FanEntityFeature
+from homeassistant.const import Platform
 from homeassistant.util.percentage import percentage_to_ranged_value, ranged_value_to_percentage
 from . import WellbeingDataUpdateCoordinator
 from .api import Mode
 from .const import DOMAIN
-from .const import FAN
 from .entity import WellbeingEntity
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
-SUPPORTED_FEATURES = FanEntityFeature.SET_SPEED | FanEntityFeature.PRESET_MODE
+SUPPORTED_FEATURES = FanEntityFeature.SET_SPEED | FanEntityFeature.PRESET_MODE | FanEntityFeature.TURN_OFF | FanEntityFeature.TURN_ON
 
 PRESET_MODES = [
     Mode.OFF,
@@ -32,7 +32,7 @@ async def async_setup_entry(hass, entry, async_add_devices):
             async_add_devices(
                 [
                     WellbeingFan(coordinator, entry, pnc_id, entity.entity_type, entity.attr)
-                    for entity in appliance.entities if entity.entity_type == FAN
+                    for entity in appliance.entities if entity.entity_type == Platform.FAN
                 ]
             )
 
@@ -44,6 +44,7 @@ class WellbeingFan(WellbeingEntity, FanEntity):
         super().__init__(coordinator, config_entry, pnc_id, entity_type, entity_attr)
         self._preset_mode = str(self.get_appliance.mode)
         self._speed = self.get_entity.state
+        self.supported_features
 
     @property
     def _speed_range(self) -> tuple[float, float]:
@@ -135,7 +136,6 @@ class WellbeingFan(WellbeingEntity, FanEntity):
         await self.api.set_fan_speed(self.pnc_id, self._speed)
         await asyncio.sleep(10)
         await self.coordinator.async_request_refresh()
-
 
     async def async_turn_off(self, **kwargs) -> None:
         """Turn off the entity."""

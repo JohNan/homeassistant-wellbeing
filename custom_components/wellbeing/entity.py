@@ -1,5 +1,6 @@
 """WellbeingEntity class"""
 from homeassistant.components.sensor import ENTITY_ID_FORMAT
+from homeassistant.const import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import WellbeingDataUpdateCoordinator
 from .api import Appliance, ApplianceEntity
@@ -55,6 +56,11 @@ class WellbeingEntity(CoordinatorEntity):
         }
 
     @property
-    def device_class(self):
-        """Return de device class of the sensor."""
+    def device_class(self) -> str | None:
+        """Return the device class of the sensor."""
         return self.get_entity.device_class
+
+    @property
+    def entity_category(self) -> EntityCategory | None:
+        """Return the entity category."""
+        return self.get_entity.entity_category
