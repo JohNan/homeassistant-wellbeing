@@ -4,30 +4,25 @@ Custom integration to integrate Wellbeing with Home Assistant.
 For more details about this integration, please refer to
 https://github.com/JohNan/homeassistant-wellbeing
 """
-import asyncio
 import logging
 from datetime import timedelta
 
+from pyelectroluxgroup.api import ElectroluxHubAPI
+from pyelectroluxgroup.token_manager import TokenManager
+
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_API_KEY, CONF_ACCESS_TOKEN
-from homeassistant.core import Config
+from homeassistant.const import CONF_API_KEY, CONF_ACCESS_TOKEN, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady, ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.helpers.update_coordinator import UpdateFailed
-from homeassistant.util.hass_dict import HassKey
-from pyelectroluxgroup.api import ElectroluxHubAPI
-from pyelectroluxgroup.token_manager import TokenManager
-
 from .api import WellbeingApiClient
-from .const import CONF_PASSWORD, CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, CONF_REFRESH_TOKEN
-from .const import CONF_USERNAME
+from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, CONF_REFRESH_TOKEN
 from .const import DOMAIN
-from .const import PLATFORMS
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
-
+PLATFORMS = [Platform.SENSOR, Platform.FAN, Platform.BINARY_SENSOR, Platform.SWITCH]
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up this integration using UI."""
@@ -45,8 +40,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             session=async_get_clientsession(hass),
             token_manager=token_manager
         )
-    except Exception:
-        raise ConfigEntryAuthFailed
+    except Exception as exception:
+        raise ConfigEntryAuthFailed("Failed to setup API") from exception
 
     client = WellbeingApiClient(hub)
 
@@ -55,11 +50,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     await coordinator.async_config_entry_first_refresh()
 
     if not coordinator.last_update_success:
-        raise ConfigEntryNotReady
+        raise ConfigEntryNotReady from coordinator.last_exception
 
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
-    coordinator.platforms.extend(PLATFORMS)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     entry.add_update_listener(async_reload_entry)
@@ -67,21 +61,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Handle removal of an entry."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
-    unloaded = all(
-        await asyncio.gather(
-            *[
-                hass.config_entries.async_forward_entry_unload(entry, platform)
-                for platform in PLATFORMS
-                if platform in coordinator.platforms
-            ]
-        )
-    )
-    if unloaded:
+    """Unload a config entry."""
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
 
-    return unloaded
+    return unload_ok
 
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -95,10 +80,7 @@ class WellbeingDataUpdateCoordinator(DataUpdateCoordinator):
     def __init__(self, hass: HomeAssistant, client: WellbeingApiClient, update_interval: timedelta) -> None:
         """Initialize."""
         self.api = client
-        self.platforms = []
-
         super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=update_interval)
-
 
     async def _async_update_data(self):
         """Update data via library."""
@@ -108,7 +90,7 @@ class WellbeingDataUpdateCoordinator(DataUpdateCoordinator):
                 "appliances": appliances
             }
         except Exception as exception:
-            raise UpdateFailed() from exception
+            raise UpdateFailed(exception) from exception
 
 
 class WellBeingTokenManager(TokenManager):
@@ -126,7 +108,7 @@ class WellBeingTokenManager(TokenManager):
         _LOGGER.debug(f"Api key: {api_key} : {self.api_key}")
         _LOGGER.debug(f"Access token: {access_token}")
         _LOGGER.debug(f"Refresh token: {refresh_token}")
-        
+
         self._hass.config_entries.async_update_entry(
             self._entry,
             data={

@@ -1,9 +1,12 @@
 """Sensor platform for Wellbeing."""
+from sys import platform
 from typing import cast
+
+from homeassistant.components.sensor import SensorEntity
+from homeassistant.const import Platform
 
 from .api import ApplianceSensor
 from .const import DOMAIN
-from .const import SENSOR
 from .entity import WellbeingEntity
 
 
@@ -17,19 +20,19 @@ async def async_setup_entry(hass, entry, async_add_devices):
             async_add_devices(
                 [
                     WellbeingSensor(coordinator, entry, pnc_id, entity.entity_type, entity.attr)
-                    for entity in appliance.entities if entity.entity_type == SENSOR
+                    for entity in appliance.entities if entity.entity_type == Platform.SENSOR
                 ]
             )
 
 
-class WellbeingSensor(WellbeingEntity):
+class WellbeingSensor(WellbeingEntity, SensorEntity):
     """wellbeing Sensor class."""
 
     @property
-    def state(self):
+    def native_value(self):
         """Return the state of the sensor."""
         return self.get_entity.state
 
     @property
-    def unit_of_measurement(self):
+    def native_unit_of_measurement(self):
         return cast(ApplianceSensor, self.get_entity).unit

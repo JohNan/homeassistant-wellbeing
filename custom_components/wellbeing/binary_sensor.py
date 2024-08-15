@@ -1,7 +1,7 @@
 """Binary sensor platform for Wellbeing."""
 from homeassistant.components.binary_sensor import BinarySensorEntity
+from homeassistant.const import Platform
 
-from .const import BINARY_SENSOR
 from .const import DOMAIN
 from .entity import WellbeingEntity
 
@@ -16,7 +16,7 @@ async def async_setup_entry(hass, entry, async_add_devices):
             async_add_devices(
                 [
                     WellbeingBinarySensor(coordinator, entry, pnc_id, entity.entity_type, entity.attr)
-                    for entity in appliance.entities if entity.entity_type == BINARY_SENSOR
+                    for entity in appliance.entities if entity.entity_type == Platform.BINARY_SENSOR
                 ]
             )
 

@@ -2,15 +2,14 @@
 import logging
 from enum import Enum
 
-from homeassistant.components.binary_sensor import BinarySensorDeviceClass
-from homeassistant.components.sensor import SensorDeviceClass
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass, BinarySensorEntity
+from homeassistant.components.fan import FanEntity
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.const import UnitOfTemperature, PERCENTAGE, CONCENTRATION_PARTS_PER_MILLION, \
-    CONCENTRATION_PARTS_PER_BILLION, CONCENTRATION_MICROGRAMS_PER_CUBIC_METER
+    CONCENTRATION_PARTS_PER_BILLION, CONCENTRATION_MICROGRAMS_PER_CUBIC_METER, Platform, EntityCategory
+from homeassistant.helpers.typing import UNDEFINED
 from pyelectroluxgroup.api import ElectroluxHubAPI
 from pyelectroluxgroup.appliance import Appliance as ApiAppliance
-
-from custom_components.wellbeing.const import SENSOR, FAN, BINARY_SENSOR
-
 
 FILTER_TYPE = {
     48: "BREEZE Complete air filter",
@@ -41,10 +40,17 @@ class Mode(str, Enum):
 class ApplianceEntity:
     entity_type: int = None
 
-    def __init__(self, name, attr, device_class=None) -> None:
+    def __init__(
+            self,
+            name,
+            attr,
+            device_class=None,
+            entity_category: EntityCategory = UNDEFINED
+    ) -> None:
         self.attr = attr
         self.name = name
         self.device_class = device_class
+        self.entity_category = entity_category
         self._state = None
 
     def setup(self, data):
@@ -60,25 +66,25 @@ class ApplianceEntity:
 
 
 class ApplianceSensor(ApplianceEntity):
-    entity_type: int = SENSOR
+    entity_type: int = Platform.SENSOR
 
-    def __init__(self, name, attr, unit="", device_class=None) -> None:
-        super().__init__(name, attr, device_class)
+    def __init__(self, name, attr, unit="", device_class=None, entity_category: EntityCategory = UNDEFINED) -> None:
+        super().__init__(name, attr, device_class, entity_category)
         self.unit = unit
 
 
 class ApplianceFan(ApplianceEntity):
-    entity_type: int = FAN
+    entity_type: int = Platform.FAN
 
     def __init__(self, name, attr) -> None:
         super().__init__(name, attr)
 
 
 class ApplianceBinary(ApplianceEntity):
-    entity_type: int = BINARY_SENSOR
+    entity_type: int = Platform.BINARY_SENSOR
 
-    def __init__(self, name, attr, device_class=None) -> None:
-        super().__init__(name, attr, device_class)
+    def __init__(self, name, attr, device_class=None, entity_category: EntityCategory = UNDEFINED) -> None:
+        super().__init__(name, attr, device_class, entity_category)
 
     @property
     def state(self):
@@ -114,11 +120,13 @@ class Appliance:
             ),
             ApplianceSensor(
                 name='State',
-                attr='State'
+                attr='State',
+                entity_category=EntityCategory.DIAGNOSTIC
             ),
             ApplianceBinary(
                 name='PM Sensor State',
-                attr='PMSensState'
+                attr='PMSensState',
+                entity_category=EntityCategory.DIAGNOSTIC
             )
         ]
 
@@ -184,7 +192,8 @@ class Appliance:
             ),
             ApplianceSensor(
                 name="Mode",
-                attr='Workmode'
+                attr='Workmode',
+                device_class=SensorDeviceClass.ENUM
             ),
             ApplianceBinary(
                 name="Ionizer",
@@ -197,11 +206,13 @@ class Appliance:
             ApplianceBinary(
                 name="Connection State",
                 attr='connectionState',
-                device_class=BinarySensorDeviceClass.CONNECTIVITY
+                device_class=BinarySensorDeviceClass.CONNECTIVITY,
+                entity_category=EntityCategory.DIAGNOSTIC
             ),
             ApplianceBinary(
                 name="Status",
-                attr='status'
+                attr='status',
+                entity_category=EntityCategory.DIAGNOSTIC
             ),
             ApplianceBinary(
                 name="Safety Lock",
@@ -275,7 +286,6 @@ class WellbeingApiClient:
 
         appliances: [ApiAppliance] = await self._hub.async_get_appliances()
         self._api_appliances = dict((appliance.id, appliance) for appliance in appliances)
-        _LOGGER.debug(f"Fetched data: {appliances}")
 
         found_appliances = {}
         for appliance in (appliance for appliance in appliances):
@@ -286,7 +296,8 @@ class WellbeingApiClient:
             appliance_name = appliance.name
 
             app = Appliance(appliance_name, appliance_id, model_name)
-            _LOGGER.debug(f"Fetched data: {appliance.state}")
+            _LOGGER.debug(f"Appliance initial: {appliance.initial_data}")
+            _LOGGER.debug(f"Appliance state: {appliance.state}")
 
             app.brand = appliance.brand
             app.serialNumber = appliance.serial_number
