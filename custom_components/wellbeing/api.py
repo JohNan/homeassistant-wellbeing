@@ -286,7 +286,6 @@ class WellbeingApiClient:
 
         appliances: [ApiAppliance] = await self._hub.async_get_appliances()
         self._api_appliances = dict((appliance.id, appliance) for appliance in appliances)
-        _LOGGER.debug(f"Fetched data: {appliances}")
 
         found_appliances = {}
         for appliance in (appliance for appliance in appliances):
@@ -297,7 +296,6 @@ class WellbeingApiClient:
             appliance_name = appliance.name
 
             app = Appliance(appliance_name, appliance_id, model_name)
-            _LOGGER.debug(f"Fetched data: {appliance.state}")
 
             app.brand = appliance.brand
             app.serialNumber = appliance.serial_number
