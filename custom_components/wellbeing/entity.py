@@ -1,4 +1,5 @@
 """WellbeingEntity class"""
+
 from homeassistant.components.sensor import ENTITY_ID_FORMAT
 from homeassistant.const import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -30,7 +31,7 @@ class WellbeingEntity(CoordinatorEntity):
 
     @property
     def get_appliance(self) -> Appliance:
-        return self.coordinator.data['appliances'].get_appliance(self.pnc_id)
+        return self.coordinator.data["appliances"].get_appliance(self.pnc_id)
 
     @property
     def unique_id(self):
@@ -52,7 +53,9 @@ class WellbeingEntity(CoordinatorEntity):
         """Return the state attributes."""
         return {
             "integration": DOMAIN,
-            "capabilities": [key for key, value in self.get_appliance.capabilities.items() if value['access'] == 'readwrite']
+            "capabilities": [
+                key for key, value in self.get_appliance.capabilities.items() if value["access"] == "readwrite"
+            ],
         }
 
     @property

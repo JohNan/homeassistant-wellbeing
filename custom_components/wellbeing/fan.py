@@ -1,4 +1,5 @@
 """Sensor platform for Wellbeing."""
+
 import asyncio
 import logging
 import math
@@ -13,26 +14,25 @@ from .entity import WellbeingEntity
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
-SUPPORTED_FEATURES = FanEntityFeature.SET_SPEED | FanEntityFeature.PRESET_MODE | FanEntityFeature.TURN_OFF | FanEntityFeature.TURN_ON
+SUPPORTED_FEATURES = (
+    FanEntityFeature.SET_SPEED | FanEntityFeature.PRESET_MODE | FanEntityFeature.TURN_OFF | FanEntityFeature.TURN_ON
+)
 
-PRESET_MODES = [
-    Mode.OFF,
-    Mode.AUTO,
-    Mode.MANUAL
-]
+PRESET_MODES = [Mode.OFF, Mode.AUTO, Mode.MANUAL]
 
 
 async def async_setup_entry(hass, entry, async_add_devices):
     """Setup sensor platform."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    appliances = coordinator.data.get('appliances', None)
+    appliances = coordinator.data.get("appliances", None)
 
     if appliances is not None:
         for pnc_id, appliance in appliances.appliances.items():
             async_add_devices(
                 [
                     WellbeingFan(coordinator, entry, pnc_id, entity.entity_type, entity.attr)
-                    for entity in appliance.entities if entity.entity_type == Platform.FAN
+                    for entity in appliance.entities
+                    if entity.entity_type == Platform.FAN
                 ]
             )
 
@@ -114,7 +114,7 @@ class WellbeingFan(WellbeingEntity, FanEntity):
     def is_on(self):
         return self.preset_mode is not Mode.OFF
 
-    async def async_turn_on(self, speed: str = None, percentage: int = None, preset_mode: str = None, **kwargs) -> None:
+    async def async_turn_on(self, percentage: int | None = None, preset_mode: str | None = None, **kwargs) -> None:
         self._preset_mode = Mode(preset_mode or Mode.AUTO.value)
 
         # Handle incorrect percentage

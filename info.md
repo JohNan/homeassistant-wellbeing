@@ -20,7 +20,7 @@ A custom component designed for [Home Assistant](https://www.home-assistant.io) 
     - WA71-302GY
     - WA71-302DG
     - WA71-304GY
- 
+
 - Electrolux Pure A9 Purifiers
     - PA91-406GY
     - PA91-606DG
@@ -29,11 +29,11 @@ A custom component designed for [Home Assistant](https://www.home-assistant.io) 
 
 - AEG AX5 Air Purifiers
     - AX51-304WT
-    
+
 - AEG AX7 Air Purifiers
     - AX71-304GY
     - AX71-304DG
-    
+
 - AEG AX9 Air Purifiers
     - AX91-404GY
     - AX91-404DG
@@ -46,7 +46,10 @@ A custom component designed for [Home Assistant](https://www.home-assistant.io) 
 ## Installation
 
 1. Click install.
-1. In the HA UI go to "Configuration" -> "Integrations" click "+" and search for "Wellbeing".
+2. In the HA UI go to "Configuration" -> "Integrations" click "+" and search for "Wellbeing".
+
+### Configuration
+To use this integration you need to login in to https://developer.electrolux.one/ using your Electrolux account details and generate an API key, Access Token and Refresh Token that is needed in the configuration.
 
 {% endif %}
 
