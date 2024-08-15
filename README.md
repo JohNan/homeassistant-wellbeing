@@ -42,6 +42,7 @@ A custom component designed for [Home Assistant](https://www.home-assistant.io) 
     - AX91-604DG
 
 ### Install with HACS (recommended)
+
 Do you you have [HACS][hacs] installed? Just search for Electrolux Wellbeing and install it direct from HACS. HACS will keep track of updates and you can easily upgrade this integration to latest version.
 
 ### Manual Installation
@@ -53,6 +54,9 @@ Do you you have [HACS][hacs] installed? Just search for Electrolux Wellbeing and
 5. Place the files you downloaded in the new directory (folder) you created.
 6. Restart Home Assistant
 7. In the HA UI go to "Configuration" -> "Integrations" click "+" and search for "Electrolux Wellbeing"
+
+### Configuration
+To use this integration you need to login in to https://developer.electrolux.one/ using your Electrolux account details and generate an API key, Access Token and Refresh Token that is needed in the configuration.
 
 
 Contributions are welcome!
