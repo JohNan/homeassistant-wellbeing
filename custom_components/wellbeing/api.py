@@ -296,6 +296,8 @@ class WellbeingApiClient:
             appliance_name = appliance.name
 
             app = Appliance(appliance_name, appliance_id, model_name)
+            _LOGGER.debug(f"Appliance initial: {appliance.initial_data}")
+            _LOGGER.debug(f"Appliance state: {appliance.state}")
 
             app.brand = appliance.brand
             app.serialNumber = appliance.serial_number
