@@ -2,9 +2,8 @@
 import logging
 from enum import Enum
 
-from homeassistant.components.binary_sensor import BinarySensorDeviceClass, BinarySensorEntity
-from homeassistant.components.fan import FanEntity
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass
+from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.const import UnitOfTemperature, PERCENTAGE, CONCENTRATION_PARTS_PER_MILLION, \
     CONCENTRATION_PARTS_PER_BILLION, CONCENTRATION_MICROGRAMS_PER_CUBIC_METER, Platform, EntityCategory
 from homeassistant.helpers.typing import UNDEFINED
@@ -45,12 +44,14 @@ class ApplianceEntity:
             name,
             attr,
             device_class=None,
-            entity_category: EntityCategory = UNDEFINED
+            entity_category: EntityCategory = UNDEFINED,
+            state_class: SensorStateClass | str | None = None
     ) -> None:
         self.attr = attr
         self.name = name
         self.device_class = device_class
         self.entity_category = entity_category
+        self.state_class = state_class
         self._state = None
 
     def setup(self, data):
@@ -68,8 +69,16 @@ class ApplianceEntity:
 class ApplianceSensor(ApplianceEntity):
     entity_type: int = Platform.SENSOR
 
-    def __init__(self, name, attr, unit="", device_class=None, entity_category: EntityCategory = UNDEFINED) -> None:
-        super().__init__(name, attr, device_class, entity_category)
+    def __init__(
+            self,
+            name,
+            attr,
+            unit="",
+            device_class=None,
+            entity_category: EntityCategory = UNDEFINED,
+            state_class: SensorStateClass | str | None = None
+    ) -> None:
+        super().__init__(name, attr, device_class, entity_category, state_class)
         self.unit = unit
 
 
@@ -88,7 +97,7 @@ class ApplianceBinary(ApplianceEntity):
 
     @property
     def state(self):
-        return self._state in ['enabled', True, 'Connected']
+        return self._state in ['enabled', True, 'Connected', 'on']
 
 
 class Appliance:
@@ -107,6 +116,21 @@ class Appliance:
 
     @staticmethod
     def _create_entities(data):
+        pure500_entities = [
+            ApplianceSensor(
+                name="PM2.5",
+                attr='PM2_5_approximate',
+                unit=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+                device_class=SensorDeviceClass.PM25,
+                state_class=SensorStateClass.MEASUREMENT
+            ),
+            ApplianceBinary(
+                name='UV State',
+                attr='UVState',
+                entity_category=EntityCategory.DIAGNOSTIC,
+            )
+        ]
+
         a7_entities = [
             ApplianceSensor(
                 name=f"{FILTER_TYPE.get(data.get('FilterType_1', 0), 'Unknown filter')} Life",
@@ -126,7 +150,7 @@ class Appliance:
             ApplianceBinary(
                 name='PM Sensor State',
                 attr='PMSensState',
-                entity_category=EntityCategory.DIAGNOSTIC
+                entity_category=EntityCategory.DIAGNOSTIC,
             )
         ]
 
@@ -140,7 +164,8 @@ class Appliance:
                 name="CO2",
                 attr='CO2',
                 unit=CONCENTRATION_PARTS_PER_MILLION,
-                device_class=SensorDeviceClass.CO2
+                device_class=SensorDeviceClass.CO2,
+                state_class=SensorStateClass.MEASUREMENT
             )
         ]
 
@@ -153,47 +178,60 @@ class Appliance:
                 name="Temperature",
                 attr='Temp',
                 unit=UnitOfTemperature.CELSIUS,
-                device_class=SensorDeviceClass.TEMPERATURE
+                device_class=SensorDeviceClass.TEMPERATURE,
+                state_class=SensorStateClass.MEASUREMENT
             ),
             ApplianceSensor(
                 name="TVOC",
                 attr='TVOC',
-                unit=CONCENTRATION_PARTS_PER_BILLION
+                unit=CONCENTRATION_PARTS_PER_BILLION,
+                state_class=SensorStateClass.MEASUREMENT
             ),
             ApplianceSensor(
                 name="eCO2",
                 attr='ECO2',
                 unit=CONCENTRATION_PARTS_PER_MILLION,
-                device_class=SensorDeviceClass.CO2
+                device_class=SensorDeviceClass.CO2,
+                state_class=SensorStateClass.MEASUREMENT
             ),
             ApplianceSensor(
                 name="PM1",
                 attr='PM1',
                 unit=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
-                device_class=SensorDeviceClass.PM1
+                device_class=SensorDeviceClass.PM1,
+                state_class=SensorStateClass.MEASUREMENT
             ),
             ApplianceSensor(
                 name="PM2.5",
                 attr='PM2_5',
                 unit=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
-                device_class=SensorDeviceClass.PM25
+                device_class=SensorDeviceClass.PM25,
+                state_class=SensorStateClass.MEASUREMENT
             ),
             ApplianceSensor(
                 name="PM10",
                 attr='PM10',
                 unit=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
-                device_class=SensorDeviceClass.PM10
+                device_class=SensorDeviceClass.PM10,
+                state_class=SensorStateClass.MEASUREMENT
             ),
             ApplianceSensor(
                 name="Humidity",
                 attr='Humidity',
                 unit=PERCENTAGE,
-                device_class=SensorDeviceClass.HUMIDITY
+                device_class=SensorDeviceClass.HUMIDITY,
+                state_class=SensorStateClass.MEASUREMENT
             ),
             ApplianceSensor(
                 name="Mode",
                 attr='Workmode',
                 device_class=SensorDeviceClass.ENUM
+            ),
+            ApplianceSensor(
+                name="Signal Strength",
+                attr='SignalStrength',
+                device_class=SensorDeviceClass.ENUM,
+                entity_category=EntityCategory.DIAGNOSTIC
             ),
             ApplianceBinary(
                 name="Ionizer",
@@ -202,6 +240,12 @@ class Appliance:
             ApplianceBinary(
                 name="UI Light",
                 attr='UILight'
+            ),
+            ApplianceBinary(
+                name="Door Open",
+                attr='DoorOpen',
+                device_class=BinarySensorDeviceClass.DOOR,
+                entity_category=EntityCategory.DIAGNOSTIC
             ),
             ApplianceBinary(
                 name="Connection State",
@@ -221,7 +265,7 @@ class Appliance:
             )
         ]
 
-        return common_entities + a9_entities + a7_entities
+        return common_entities + a9_entities + a7_entities + pure500_entities
 
     def get_entity(self, entity_type, entity_attr):
         return next(
@@ -246,8 +290,10 @@ class Appliance:
         ]
 
     @property
-    def speed_range(self) -> tuple[float, float]:
+    def speed_range(self) -> tuple[int, int]:
         ## Electrolux Devices:
+        if self.model == "Muju":
+            return 1, 3
         if self.model == "WELLA5":
             return 1, 5
         if self.model == "WELLA7":
