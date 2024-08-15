@@ -2,9 +2,8 @@
 import logging
 from enum import Enum
 
-from homeassistant.components.binary_sensor import BinarySensorDeviceClass, BinarySensorEntity
-from homeassistant.components.fan import FanEntity
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass
+from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.const import UnitOfTemperature, PERCENTAGE, CONCENTRATION_PARTS_PER_MILLION, \
     CONCENTRATION_PARTS_PER_BILLION, CONCENTRATION_MICROGRAMS_PER_CUBIC_METER, Platform, EntityCategory
 from homeassistant.helpers.typing import UNDEFINED
@@ -291,7 +290,7 @@ class Appliance:
         ]
 
     @property
-    def speed_range(self) -> tuple[float, float]:
+    def speed_range(self) -> tuple[int, int]:
         ## Electrolux Devices:
         if self.model == "Muju":
             return 1, 3

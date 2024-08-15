@@ -44,10 +44,9 @@ class WellbeingFan(WellbeingEntity, FanEntity):
         super().__init__(coordinator, config_entry, pnc_id, entity_type, entity_attr)
         self._preset_mode = str(self.get_appliance.mode)
         self._speed = self.get_entity.state
-        self.supported_features
 
     @property
-    def _speed_range(self) -> tuple[float, float]:
+    def _speed_range(self) -> tuple[int, int]:
         return self.get_appliance.speed_range
 
     @property
