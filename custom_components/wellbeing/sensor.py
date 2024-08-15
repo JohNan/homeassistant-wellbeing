@@ -39,4 +39,4 @@ class WellbeingSensor(WellbeingEntity, SensorEntity):
 
     @property
     def state_class(self) -> SensorStateClass | str | None:
-        return self.state_class
+        return self.get_entity.state_class
