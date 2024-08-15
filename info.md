@@ -46,7 +46,10 @@ A custom component designed for [Home Assistant](https://www.home-assistant.io) 
 ## Installation
 
 1. Click install.
-1. In the HA UI go to "Configuration" -> "Integrations" click "+" and search for "Wellbeing".
+2. In the HA UI go to "Configuration" -> "Integrations" click "+" and search for "Wellbeing".
+
+### Configuration
+To use this integration you need to login in to https://developer.electrolux.one/ using your Electrolux account details and generate an API key, Access Token and Refresh Token that is needed in the configuration.
 
 {% endif %}
 
