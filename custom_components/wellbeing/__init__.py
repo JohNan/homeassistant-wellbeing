@@ -4,6 +4,7 @@ Custom integration to integrate Wellbeing with Home Assistant.
 For more details about this integration, please refer to
 https://github.com/JohNan/homeassistant-wellbeing
 """
+
 import logging
 from datetime import timedelta
 
@@ -24,6 +25,7 @@ from .const import DOMAIN
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 PLATFORMS = [Platform.SENSOR, Platform.FAN, Platform.BINARY_SENSOR, Platform.SWITCH]
 
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up this integration using UI."""
     if hass.data.get(DOMAIN) is None:
@@ -36,10 +38,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     token_manager = WellBeingTokenManager(hass, entry)
     try:
-        hub = ElectroluxHubAPI(
-            session=async_get_clientsession(hass),
-            token_manager=token_manager
-        )
+        hub = ElectroluxHubAPI(session=async_get_clientsession(hass), token_manager=token_manager)
     except Exception as exception:
         raise ConfigEntryAuthFailed("Failed to setup API") from exception
 
@@ -86,9 +85,7 @@ class WellbeingDataUpdateCoordinator(DataUpdateCoordinator):
         """Update data via library."""
         try:
             appliances = await self.api.async_get_appliances()
-            return {
-                "appliances": appliances
-            }
+            return {"appliances": appliances}
         except Exception as exception:
             raise UpdateFailed(exception) from exception
 
@@ -111,9 +108,5 @@ class WellBeingTokenManager(TokenManager):
 
         self._hass.config_entries.async_update_entry(
             self._entry,
-            data={
-                CONF_API_KEY: self.api_key,
-                CONF_REFRESH_TOKEN: refresh_token,
-                CONF_ACCESS_TOKEN: access_token
-            },
+            data={CONF_API_KEY: self.api_key, CONF_REFRESH_TOKEN: refresh_token, CONF_ACCESS_TOKEN: access_token},
         )

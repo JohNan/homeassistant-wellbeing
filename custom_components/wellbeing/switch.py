@@ -1,4 +1,5 @@
 """Switch platform for Wellbeing."""
+
 from homeassistant.components.switch import SwitchEntity
 
 from .const import DOMAIN
@@ -8,16 +9,20 @@ from .entity import WellbeingEntity
 async def async_setup_entry(hass, entry, async_add_devices):
     """Setup switch platform."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    appliances = coordinator.data.get('appliances', None)
+    appliances = coordinator.data.get("appliances", None)
     capabilities = ["Ionizer", "UILight", "SafetyLock"]
 
     if appliances is not None:
         for pnc_id, appliance in appliances.appliances.items():
             # Assuming that the appliance supports these features
-            async_add_devices([
-                WellbeingSwitch(coordinator, entry, pnc_id, capability)
-                for capability in capabilities if appliance.has_capability(capability)
-            ])
+            async_add_devices(
+                [
+                    WellbeingSwitch(coordinator, entry, pnc_id, capability)
+                    for capability in capabilities
+                    if appliance.has_capability(capability)
+                ]
+            )
+
 
 class WellbeingSwitch(WellbeingEntity, SwitchEntity):
     """Wellbeing Switch class."""
