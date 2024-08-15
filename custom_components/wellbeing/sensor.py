@@ -2,7 +2,7 @@
 from sys import platform
 from typing import cast
 
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.const import Platform
 
 from .api import ApplianceSensor
@@ -36,3 +36,7 @@ class WellbeingSensor(WellbeingEntity, SensorEntity):
     @property
     def native_unit_of_measurement(self):
         return cast(ApplianceSensor, self.get_entity).unit
+
+    @property
+    def state_class(self) -> SensorStateClass | str | None:
+        return self.state_class
