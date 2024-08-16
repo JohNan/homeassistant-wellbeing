@@ -2,6 +2,7 @@
 
 import logging
 from enum import Enum
+from typing import cast, Any, Callable
 
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
@@ -37,11 +38,52 @@ FILTER_TYPE = {
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
 
-class Mode(str, Enum):
+class Model(str, Enum):
+    Muju = "Muju"
+    WELLA5 = "WELLA5"
+    WELLA7 = "WELLA7"
+    PUREA9 = "PUREA9"
+    AX5 = "AX5"
+    AX7 = "AX7"
+    AX9 = "AX9"
+
+
+class EnumBase(Enum):
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, Enum):
+            return self.value == other.value
+        return False
+
+
+def extend_enum(parent_enum: EnumBase) -> Callable[[EnumBase], EnumBase]:
+    """Decorator function that extends an enum class with values from another enum class."""
+
+    def wrapper(extended_enum: EnumBase) -> EnumBase:
+        joined = {}
+        for item in parent_enum:
+            joined[item.name] = item.value
+        for item in extended_enum:
+            joined[item.name] = item.value
+        return EnumBase(extended_enum.__name__, joined)
+
+    return wrapper
+
+
+class Mode(EnumBase):
     OFF = "PowerOff"
-    AUTO = "Auto"
     MANUAL = "Manual"
     UNDEFINED = "Undefined"
+
+
+@extend_enum(Mode)
+class SmartMode(EnumBase):
+    SMART = "Smart"
+    QUITE = "Quiet"
+
+
+@extend_enum(Mode)
+class AutoMode(EnumBase):
+    AUTO = "Auto"
 
 
 class ApplianceEntity:
@@ -116,9 +158,10 @@ class Appliance:
     mode: Mode
     entities: list
     capabilities: dict
+    model: Model
 
     def __init__(self, name, pnc_id, model) -> None:
-        self.model = model
+        self.model = Model(model)
         self.pnc_id = pnc_id
         self.name = name
 
@@ -261,30 +304,43 @@ class Appliance:
     def clear_mode(self):
         self.mode = Mode.UNDEFINED
 
+    def set_mode(self, mode: Mode):
+        self.mode = mode
+
     def setup(self, data, capabilities):
         self.firmware = data.get("FrmVer_NIU")
-        self.mode = Mode(data.get("Workmode"))
+        self.mode = self._mode(data.get("Workmode"))
+
         self.capabilities = capabilities
         self.entities = [entity.setup(data) for entity in Appliance._create_entities(data) if entity.attr in data]
+
+    def _mode(self, mode: str) -> Mode:
+        if self.model == "Muju":
+            return SmartMode(mode)
+        else:
+            return AutoMode(mode)
 
     @property
     def speed_range(self) -> tuple[int, int]:
         ## Electrolux Devices:
-        if self.model == "Muju":
-            return 1, 3
-        if self.model == "WELLA5":
+        if self.model == Model.Muju:
+            mode = cast(Mode, SmartMode)
+            if mode is SmartMode.QUITE:
+                return 1, 2
             return 1, 5
-        if self.model == "WELLA7":
+        if self.model == Model.WELLA5:
             return 1, 5
-        if self.model == "PUREA9":
+        if self.model == Model.WELLA7:
+            return 1, 5
+        if self.model == Model.PUREA9:
             return 1, 9
 
         ## AEG Devices:
-        if self.model == "AX5":
+        if self.model == Model.AX5:
             return 1, 5
-        if self.model == "AX7":
+        if self.model == Model.AX7:
             return 1, 5
-        if self.model == "AX9":
+        if self.model == Model.AX9:
             return 1, 9
 
         return 0, 0

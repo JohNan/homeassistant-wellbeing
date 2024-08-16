@@ -7,8 +7,9 @@ import math
 from homeassistant.components.fan import FanEntity, FanEntityFeature
 from homeassistant.const import Platform
 from homeassistant.util.percentage import percentage_to_ranged_value, ranged_value_to_percentage
+
 from . import WellbeingDataUpdateCoordinator
-from .api import Mode
+from .api import Mode, SmartMode, AutoMode, Model
 from .const import DOMAIN
 from .entity import WellbeingEntity
 
@@ -18,7 +19,9 @@ SUPPORTED_FEATURES = (
     FanEntityFeature.SET_SPEED | FanEntityFeature.PRESET_MODE | FanEntityFeature.TURN_OFF | FanEntityFeature.TURN_ON
 )
 
-PRESET_MODES = [Mode.OFF, Mode.AUTO, Mode.MANUAL]
+PRESET_MODES_SMART = [SmartMode.SMART.value, SmartMode.QUITE.value]
+PRESET_MODES_AUTO = [AutoMode.AUTO.value]
+PRESET_MODES = [AutoMode.OFF.value, Mode.MANUAL.value]
 
 
 async def async_setup_entry(hass, entry, async_add_devices):
@@ -42,7 +45,7 @@ class WellbeingFan(WellbeingEntity, FanEntity):
 
     def __init__(self, coordinator: WellbeingDataUpdateCoordinator, config_entry, pnc_id, entity_type, entity_attr):
         super().__init__(coordinator, config_entry, pnc_id, entity_type, entity_attr)
-        self._preset_mode = str(self.get_appliance.mode)
+        self._preset_mode = self.get_appliance.mode
         self._speed = self.get_entity.state
 
     @property
@@ -93,18 +96,28 @@ class WellbeingFan(WellbeingEntity, FanEntity):
     @property
     def preset_mode(self):
         """Return the current preset mode, e.g., auto, smart, interval, favorite."""
-        return self._preset_mode if self.get_appliance.mode is Mode.UNDEFINED else self.get_appliance.mode
+        return (
+            self._preset_mode.value
+            if self.get_appliance.mode.value is Mode.UNDEFINED.value
+            else self.get_appliance.mode.value
+        )
 
     @property
     def preset_modes(self):
         """Return a list of available preset modes."""
-        return PRESET_MODES
+        if self.get_appliance.model == Model.Muju:
+            return PRESET_MODES_SMART + PRESET_MODES
+        return PRESET_MODES_AUTO + PRESET_MODES
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set new preset mode."""
         self._valid_preset_mode_or_raise(preset_mode)
-        self._preset_mode = Mode(preset_mode)
-        self.get_appliance.clear_mode()
+        if self.get_appliance.model == Model.Muju:
+            self._preset_mode = SmartMode(preset_mode)
+        else:
+            self._preset_mode = AutoMode(preset_mode)
+
+        self.get_appliance.set_mode(self._preset_mode)
         self.async_write_ha_state()
         await self.api.set_work_mode(self.pnc_id, self._preset_mode)
         await asyncio.sleep(10)
@@ -115,7 +128,10 @@ class WellbeingFan(WellbeingEntity, FanEntity):
         return self.preset_mode is not Mode.OFF
 
     async def async_turn_on(self, percentage: int | None = None, preset_mode: str | None = None, **kwargs) -> None:
-        self._preset_mode = Mode(preset_mode or Mode.AUTO.value)
+        if self.get_appliance.model == Model.Muju:
+            self._preset_mode = SmartMode(preset_mode or SmartMode.SMART.value)
+        else:
+            self._preset_mode = AutoMode(preset_mode or AutoMode.AUTO.value)
 
         # Handle incorrect percentage
         if percentage is not None and isinstance(percentage, str):
