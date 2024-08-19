@@ -9,7 +9,7 @@ from homeassistant.const import Platform
 from homeassistant.util.percentage import percentage_to_ranged_value, ranged_value_to_percentage
 
 from . import WellbeingDataUpdateCoordinator
-from .api import Mode, SmartMode, AutoMode, Model
+from .api import WorkMode
 from .const import DOMAIN
 from .entity import WellbeingEntity
 
@@ -18,10 +18,6 @@ _LOGGER: logging.Logger = logging.getLogger(__package__)
 SUPPORTED_FEATURES = (
     FanEntityFeature.SET_SPEED | FanEntityFeature.PRESET_MODE | FanEntityFeature.TURN_OFF | FanEntityFeature.TURN_ON
 )
-
-PRESET_MODES_SMART = [SmartMode.SMART.value, SmartMode.QUITE.value]
-PRESET_MODES_AUTO = [AutoMode.AUTO.value]
-PRESET_MODES = [AutoMode.OFF.value, Mode.MANUAL.value]
 
 
 async def async_setup_entry(hass, entry, async_add_devices):
@@ -77,16 +73,16 @@ class WellbeingFan(WellbeingEntity, FanEntity):
             await self.async_turn_off()
             return
 
-        is_manual = self.preset_mode is Mode.MANUAL
+        is_manual = self.preset_mode == WorkMode.MANUAL
         # make sure manual is set before setting speed
         if not is_manual:
-            await self.async_set_preset_mode(Mode.MANUAL)
+            await self.async_set_preset_mode(WorkMode.MANUAL)
 
         await self.api.set_fan_speed(self.pnc_id, self._speed)
 
-        if is_manual:
-            await asyncio.sleep(10)
-            await self.coordinator.async_request_refresh()
+        self.async_write_ha_state()
+        await asyncio.sleep(10)
+        await self.coordinator.async_request_refresh()
 
     @property
     def supported_features(self):
@@ -98,24 +94,19 @@ class WellbeingFan(WellbeingEntity, FanEntity):
         """Return the current preset mode, e.g., auto, smart, interval, favorite."""
         return (
             self._preset_mode.value
-            if self.get_appliance.mode.value is Mode.UNDEFINED.value
+            if self.get_appliance.mode.value is WorkMode.UNDEFINED.value
             else self.get_appliance.mode.value
         )
 
     @property
     def preset_modes(self):
         """Return a list of available preset modes."""
-        if self.get_appliance.model == Model.Muju:
-            return PRESET_MODES_SMART + PRESET_MODES
-        return PRESET_MODES_AUTO + PRESET_MODES
+        return self.get_appliance.preset_modes
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set new preset mode."""
         self._valid_preset_mode_or_raise(preset_mode)
-        if self.get_appliance.model == Model.Muju:
-            self._preset_mode = SmartMode(preset_mode)
-        else:
-            self._preset_mode = AutoMode(preset_mode)
+        self._preset_mode = WorkMode(preset_mode)
 
         self.get_appliance.set_mode(self._preset_mode)
         self.async_write_ha_state()
@@ -125,13 +116,10 @@ class WellbeingFan(WellbeingEntity, FanEntity):
 
     @property
     def is_on(self):
-        return self.preset_mode is not Mode.OFF
+        return self.preset_mode is not WorkMode.OFF
 
     async def async_turn_on(self, percentage: int | None = None, preset_mode: str | None = None, **kwargs) -> None:
-        if self.get_appliance.model == Model.Muju:
-            self._preset_mode = SmartMode(preset_mode or SmartMode.SMART.value)
-        else:
-            self._preset_mode = AutoMode(preset_mode or AutoMode.AUTO.value)
+        self._preset_mode = self.get_appliance.work_mode_from_preset_mode(preset_mode)
 
         # Handle incorrect percentage
         if percentage is not None and isinstance(percentage, str):
@@ -154,12 +142,12 @@ class WellbeingFan(WellbeingEntity, FanEntity):
 
     async def async_turn_off(self, **kwargs) -> None:
         """Turn off the entity."""
-        self._preset_mode = Mode.OFF
+        self._preset_mode = WorkMode.OFF
         self._speed = 0
         self.get_appliance.clear_mode()
         self.get_entity.clear_state()
         self.async_write_ha_state()
 
-        await self.api.set_work_mode(self.pnc_id, Mode.OFF)
+        await self.api.set_work_mode(self.pnc_id, WorkMode.OFF)
         await asyncio.sleep(10)
         await self.coordinator.async_request_refresh()
