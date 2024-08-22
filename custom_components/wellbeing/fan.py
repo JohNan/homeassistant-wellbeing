@@ -56,7 +56,10 @@ class WellbeingFan(WellbeingEntity, FanEntity):
     @property
     def percentage(self):
         """Return the current speed percentage."""
-        speed = self._speed if self.get_entity.state is None else self.get_entity.state
+        if self._preset_mode == WorkMode.OFF:
+            speed = 0
+        else:
+            speed = self._speed if self.get_entity.state is None else self.get_entity.state
         percentage = ranged_value_to_percentage(self._speed_range, speed)
         _LOGGER.debug(f"percentage - speed: {speed} percentage: {percentage}")
         return percentage
@@ -131,8 +134,7 @@ class WellbeingFan(WellbeingEntity, FanEntity):
 
         # Proceed with the provided or default percentage
         self._speed = math.floor(percentage_to_ranged_value(self._speed_range, percentage or 10))
-        self.get_appliance.clear_mode()
-        self.get_entity.clear_state()
+        self.get_appliance.set_mode(self._preset_mode)
         self.async_write_ha_state()
 
         await self.api.set_work_mode(self.pnc_id, self._preset_mode)
@@ -144,8 +146,7 @@ class WellbeingFan(WellbeingEntity, FanEntity):
         """Turn off the entity."""
         self._preset_mode = WorkMode.OFF
         self._speed = 0
-        self.get_appliance.clear_mode()
-        self.get_entity.clear_state()
+        self.get_appliance.set_mode(self._preset_mode)
         self.async_write_ha_state()
 
         await self.api.set_work_mode(self.pnc_id, WorkMode.OFF)
