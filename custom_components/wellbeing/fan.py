@@ -16,7 +16,7 @@ from .entity import WellbeingEntity
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
 SUPPORTED_FEATURES = (
-    FanEntityFeature.SET_SPEED | FanEntityFeature.PRESET_MODE | FanEntityFeature.TURN_OFF | FanEntityFeature.TURN_ON
+    FanEntityFeature.SET_SPEED | FanEntityFeature.PRESET_MODE
 )
 
 
@@ -38,6 +38,9 @@ async def async_setup_entry(hass, entry, async_add_devices):
 
 class WellbeingFan(WellbeingEntity, FanEntity):
     """wellbeing Sensor class."""
+
+    # Add FanEntityFeature.TURN_OFF | FanEntityFeature.TURN_ON and set to True before 2025.2
+    _enable_turn_on_off_backwards_compatibility = False
 
     def __init__(self, coordinator: WellbeingDataUpdateCoordinator, config_entry, pnc_id, entity_type, entity_attr):
         super().__init__(coordinator, config_entry, pnc_id, entity_type, entity_attr)
