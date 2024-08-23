@@ -119,7 +119,7 @@ class WellbeingFan(WellbeingEntity, FanEntity):
 
     @property
     def is_on(self):
-        return self.preset_mode is not WorkMode.OFF
+        return self.preset_mode != WorkMode.OFF
 
     async def async_turn_on(self, percentage: int | None = None, preset_mode: str | None = None, **kwargs) -> None:
         self._preset_mode = self.get_appliance.work_mode_from_preset_mode(preset_mode)
