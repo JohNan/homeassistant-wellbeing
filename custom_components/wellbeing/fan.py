@@ -138,7 +138,10 @@ class WellbeingFan(WellbeingEntity, FanEntity):
         self.async_write_ha_state()
 
         await self.api.set_work_mode(self.pnc_id, self._preset_mode)
-        await self.api.set_fan_speed(self.pnc_id, self._speed)
+        
+        if self._preset_mode != WorkMode.AUTO:
+            await self.api.set_fan_speed(self.pnc_id, self._speed)
+        
         await asyncio.sleep(10)
         await self.coordinator.async_request_refresh()
 
