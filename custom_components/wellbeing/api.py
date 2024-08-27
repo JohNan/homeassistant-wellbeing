@@ -351,16 +351,16 @@ class WellbeingApiClient:
             appliance_id = appliance.id
             appliance_name = appliance.name
 
-            app = Appliance(appliance_name, appliance_id, model_name)
             _LOGGER.debug(f"Appliance initial: {appliance.initial_data}")
             _LOGGER.debug(f"Appliance state: {appliance.state}")
 
+            if appliance.device_type != "AIR_PURIFIER":
+                continue
+
+            app = Appliance(appliance_name, appliance_id, model_name)
             app.brand = appliance.brand
             app.serialNumber = appliance.serial_number
             app.device = appliance.device_type
-
-            if app.device != "AIR_PURIFIER":
-                continue
 
             data = appliance.state
             data["status"] = appliance.state_data.get("status", "unknown")
