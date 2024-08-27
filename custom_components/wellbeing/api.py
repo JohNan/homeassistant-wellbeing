@@ -163,7 +163,12 @@ class Appliance:
                 attr="FilterLife_2",
                 unit=PERCENTAGE,
             ),
-            ApplianceSensor(name="State", attr="State", entity_category=EntityCategory.DIAGNOSTIC),
+            ApplianceSensor(
+                name="State",
+                attr="State",
+                device_class=SensorDeviceClass.ENUM,
+                entity_category=EntityCategory.DIAGNOSTIC
+            ),
             ApplianceBinary(
                 name="PM Sensor State",
                 attr="PMSensState",

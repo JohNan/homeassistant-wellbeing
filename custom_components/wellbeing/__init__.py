@@ -102,11 +102,22 @@ class WellBeingTokenManager(TokenManager):
     def update(self, access_token: str, refresh_token: str, api_key: str | None = None):
         super().update(access_token, refresh_token, api_key)
         _LOGGER.debug("Tokens updated")
-        _LOGGER.debug(f"Api key: {api_key} : {self.api_key}")
-        _LOGGER.debug(f"Access token: {access_token}")
-        _LOGGER.debug(f"Refresh token: {refresh_token}")
+        _LOGGER.debug(f"Api key: {self._mask_access_token(self.api_key)}")
+        _LOGGER.debug(f"Access token: {self._mask_access_token(access_token)}")
+        _LOGGER.debug(f"Refresh token: {self._mask_access_token(refresh_token)}")
 
         self._hass.config_entries.async_update_entry(
             self._entry,
             data={CONF_API_KEY: self.api_key, CONF_REFRESH_TOKEN: refresh_token, CONF_ACCESS_TOKEN: access_token},
         )
+
+    @staticmethod
+    def _mask_access_token(token: str):
+        if len(token) == 1:
+            return "*"
+        elif len(token) < 4:
+            return token[:2] + "*" * (len(token) - 2)
+        elif len(token) < 10:
+            return token[:2] + "*****" + token[-2:]
+        else:
+            return token[:5] + "*****" + token[-5:]
