@@ -43,7 +43,6 @@ class Model(str, Enum):
     WELLA5 = "WELLA5"
     WELLA7 = "WELLA7"
     PUREA9 = "PUREA9"
-    A9 = "A9"
     AX5 = "AX5"
     AX7 = "AX7"
     AX9 = "AX9"
@@ -310,8 +309,6 @@ class Appliance:
         if self.model == Model.WELLA7:
             return 1, 5
         if self.model == Model.PUREA9:
-            return 1, 9
-        if self.model == Model.A9:
             return 1, 9
 
         ## AEG Devices:
