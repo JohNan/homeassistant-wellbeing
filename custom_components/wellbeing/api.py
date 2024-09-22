@@ -121,9 +121,7 @@ class ApplianceVacuum(ApplianceEntity):
 class ApplianceBinary(ApplianceEntity):
     entity_type: int = Platform.BINARY_SENSOR
 
-    def __init__(
-        self, name, attr, device_class=None, entity_category: EntityCategory = UNDEFINED
-    ) -> None:
+    def __init__(self, name, attr, device_class=None, entity_category: EntityCategory = UNDEFINED) -> None:
         super().__init__(name, attr, device_class, entity_category)
 
     @property
@@ -203,19 +201,12 @@ class Appliance:
         ]
 
         purei9_entities = [
-            # ApplianceSensor(  # Test Robot Vacuum Battery Sensor
-            #    name="Battery Status",
-            #    attr="batteryStatus",
-            #    device_class=SensorDeviceClass.BATTERY,
-            #    state_class=SensorStateClass.MEASUREMENT,
-            # ),
-            ApplianceSensor(  # Test Robot Vacuum Robot Sensor
+            ApplianceSensor( 
                 name="Dustbin Status",
                 attr="dustbinStatus",
                 device_class=SensorDeviceClass.ENUM,
-                state_class=SensorStateClass.MEASUREMENT,
             ),
-            ApplianceVacuum(  # Test Robot Vacuum
+            ApplianceVacuum(
                 name="Vacuum",
                 attr="robotStatus",
             ),
@@ -234,10 +225,7 @@ class Appliance:
                 state_class=SensorStateClass.MEASUREMENT,
             ),
             ApplianceSensor(
-                name="TVOC",
-                attr="TVOC",
-                unit=CONCENTRATION_PARTS_PER_BILLION,
-                state_class=SensorStateClass.MEASUREMENT,
+                name="TVOC", attr="TVOC", unit=CONCENTRATION_PARTS_PER_BILLION, state_class=SensorStateClass.MEASUREMENT
             ),
             ApplianceSensor(
                 name="eCO2",
@@ -274,9 +262,7 @@ class Appliance:
                 device_class=SensorDeviceClass.HUMIDITY,
                 state_class=SensorStateClass.MEASUREMENT,
             ),
-            ApplianceSensor(
-                name="Mode", attr="Workmode", device_class=SensorDeviceClass.ENUM
-            ),
+            ApplianceSensor(name="Mode", attr="Workmode", device_class=SensorDeviceClass.ENUM),
             ApplianceSensor(
                 name="Signal Strength",
                 attr="SignalStrength",
@@ -297,14 +283,8 @@ class Appliance:
                 device_class=BinarySensorDeviceClass.CONNECTIVITY,
                 entity_category=EntityCategory.DIAGNOSTIC,
             ),
-            ApplianceBinary(
-                name="Status", attr="status", entity_category=EntityCategory.DIAGNOSTIC
-            ),
-            ApplianceBinary(
-                name="Safety Lock",
-                attr="SafetyLock",
-                device_class=BinarySensorDeviceClass.LOCK,
-            ),
+            ApplianceBinary(name="Status", attr="status", entity_category=EntityCategory.DIAGNOSTIC),
+            ApplianceBinary(name="Safety Lock", attr="SafetyLock", device_class=BinarySensorDeviceClass.LOCK),
         ]
 
         return (
@@ -317,16 +297,11 @@ class Appliance:
 
     def get_entity(self, entity_type, entity_attr):
         return next(
-            entity
-            for entity in self.entities
-            if entity.attr == entity_attr and entity.entity_type == entity_type
+            entity for entity in self.entities if entity.attr == entity_attr and entity.entity_type == entity_type
         )
 
     def has_capability(self, capability) -> bool:
-        return (
-            capability in self.capabilities
-            and self.capabilities[capability]["access"] == "readwrite"
-        )
+        return capability in self.capabilities and self.capabilities[capability]["access"] == "readwrite"
 
     def clear_mode(self):
         self.mode = WorkMode.UNDEFINED
@@ -344,11 +319,7 @@ class Appliance:
             self.battery_status = data.get("batteryStatus")
 
         self.capabilities = capabilities
-        self.entities = [
-            entity.setup(data)
-            for entity in Appliance._create_entities(data)
-            if entity.attr in data
-        ]
+        self.entities = [entity.setup(data) for entity in Appliance._create_entities(data) if entity.attr in data]
 
     @property
     def preset_modes(self) -> list[WorkMode]:
@@ -397,6 +368,7 @@ class Appliances:
 
 
 class WellbeingApiClient:
+
     def __init__(self, hub: ElectroluxHubAPI) -> None:
         """Sample API Client."""
         self._api_appliances: dict[str, ApiAppliance] = {}
@@ -432,9 +404,7 @@ class WellbeingApiClient:
 
             data = appliance.state
             data["status"] = appliance.state_data.get("status", "unknown")
-            data["connectionState"] = appliance.state_data.get(
-                "connectionState", "unknown"
-            )
+            data["connectionState"] = appliance.state_data.get("connectionState", "unknown")
 
             app.setup(data, appliance.capabilities_data)
 
@@ -459,9 +429,7 @@ class WellbeingApiClient:
         }  # Not the right formatting. Disable FAN_SPEEDS until this is figured out
         appliance = self._api_appliances.get(pnc_id, None)
         if appliance is None:
-            _LOGGER.error(
-                f"Failed to set vacuum power mode for appliance with id {pnc_id}"
-            )
+            _LOGGER.error(f"Failed to set feature {feature} for appliance with id {pnc_id}")
             return
         result = await appliance.send_command(data)
         _LOGGER.debug(f"Set Vacuum Power Mode: {result}")
