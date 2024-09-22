@@ -460,9 +460,7 @@ class WellbeingApiClient:
         data = {feature: state}
         appliance = self._api_appliances.get(pnc_id, None)
         if appliance is None:
-            _LOGGER.error(
-                f"Failed to set feature {feature} for appliance with id {pnc_id}"
-            )
+            _LOGGER.error(f"Failed to set feature {feature} for appliance with id {pnc_id}")
             return
 
         await appliance.send_command(data)
