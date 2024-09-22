@@ -10,6 +10,8 @@ from homeassistant.components.vacuum import (
     STATE_PAUSED,
     STATE_RETURNING,
     STATE_IDLE,
+    STATE_DOCKED,
+    STATE_ERROR,
 )
 from homeassistant.const import Platform
 from homeassistant.util.percentage import (
@@ -96,8 +98,6 @@ class WellbeingVacuum(WellbeingEntity, StateVacuumEntity):
         entity_attr,
     ):
         super().__init__(coordinator, config_entry, pnc_id, entity_type, entity_attr)
-        self._power_mode = self.get_appliance.power_mode
-        self._battery_status = self.get_appliance.battery_status
 
     @property
     def supported_features(self) -> int:
@@ -106,24 +106,22 @@ class WellbeingVacuum(WellbeingEntity, StateVacuumEntity):
     @property
     def state(self):
         """Return the state of the vacuum."""
-        if self.get_entity.state in VACUUM_STATES:
-            return VACUUM_STATES[self.get_entity.state]
-        return self.get_entity.state
+        return VACUUM_STATES.get(self.get_entity.state, STATE_ERROR)
 
     @property
     def battery_level(self):
         """Return the battery level of the vacuum based on the status from 0-6."""
-        return BATTERY_LEVELS.get(self._battery_status, 0)
+        return BATTERY_LEVELS.get(self.get_appliance.battery_status, 0)
 
     @property
     def battery_icon(self):
         """Return the battery icon of the vacuum based on the status from 0-6."""
-        return BATTERY_ICONS.get(self._battery_status, "mdi:battery-unknown")
+        return BATTERY_ICONS.get(self.get_appliance.battery_status, "mdi:battery-unknown")
 
     @property
     def fan_speed(self):
         """Return the fan speed of the vacuum cleaner."""
-        return FAN_SPEEDS.get(self._power_mode, "Unknown")
+        return FAN_SPEEDS.get(self.get_appliance.power_mode, "Unknown")
 
     @property
     def fan_speed_list(self):
