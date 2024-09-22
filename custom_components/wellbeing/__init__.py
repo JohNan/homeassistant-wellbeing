@@ -113,6 +113,7 @@ class WellBeingTokenManager(TokenManager):
         _LOGGER.debug(f"Refresh token: {self._mask_access_token(refresh_token)}")
 
         self._hass.config_entries.async_update_entry(
+            self._entry,
             data={CONF_API_KEY: self.api_key, CONF_REFRESH_TOKEN: refresh_token, CONF_ACCESS_TOKEN: access_token},
         )
 
