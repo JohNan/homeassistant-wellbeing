@@ -34,10 +34,20 @@ SUPPORTED_FEATURES = (
 )
 
 VACUUM_STATES = {
-    1: STATE_CLEANING,
+    1: STATE_CLEANING,  # Regular Cleaning
     2: STATE_PAUSED,
+    3: STATE_CLEANING,  # Stop cleaning
+    4: STATE_PAUSED,  # Pause Spot cleaning
     5: STATE_RETURNING,
+    6: STATE_PAUSED,  # Paused returning
+    7: STATE_RETURNING,  # Returning for pitstop
+    8: STATE_PAUSED,  # Paused returning for pitstop
+    9: STATE_DOCKED,  # Charging
     10: STATE_IDLE,
+    11: STATE_ERROR,
+    12: STATE_DOCKED,  # Pitstop
+    13: STATE_IDLE,  # Manual stearing
+    14: STATE_IDLE,  # Firmware upgrading
 }
 
 BATTERY_LEVELS = {
