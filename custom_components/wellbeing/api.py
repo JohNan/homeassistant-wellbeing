@@ -358,6 +358,23 @@ class Appliance:
 
         return 0, 0
 
+    @property
+    def battery_range(self) -> tuple[int, int]:
+        if self.model == Model.PUREi9:
+            return 2, 6 # Do not include lowest value of 1 to make this mean empty (0%) battery
+
+        return 0, 0
+
+    @property
+    def vacuum_fan_speeds(self) -> dict[int, str]:
+        if self.model == Model.PUREi9:
+            return {
+                1: "Quiet",
+                2: "Smart",
+                3: "Power",
+            }
+        return {}
+
 
 class Appliances:
     def __init__(self, appliances) -> None:
