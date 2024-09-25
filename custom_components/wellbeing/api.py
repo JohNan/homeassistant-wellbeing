@@ -46,6 +46,8 @@ class Model(str, Enum):
     AX5 = "AX5"
     AX7 = "AX7"
     AX9 = "AX9"
+    PUREi9 = "PUREi9"
+
 
 class WorkMode(str, Enum):
     OFF = "PowerOff"
@@ -109,6 +111,13 @@ class ApplianceFan(ApplianceEntity):
         super().__init__(name, attr)
 
 
+class ApplianceVacuum(ApplianceEntity):
+    entity_type: int = Platform.VACUUM
+
+    def __init__(self, name, attr) -> None:
+        super().__init__(name, attr)
+
+
 class ApplianceBinary(ApplianceEntity):
     entity_type: int = Platform.BINARY_SENSOR
 
@@ -167,7 +176,7 @@ class Appliance:
                 name="State",
                 attr="State",
                 device_class=SensorDeviceClass.ENUM,
-                entity_category=EntityCategory.DIAGNOSTIC
+                entity_category=EntityCategory.DIAGNOSTIC,
             ),
             ApplianceBinary(
                 name="PM Sensor State",
@@ -188,6 +197,18 @@ class Appliance:
                 unit=CONCENTRATION_PARTS_PER_MILLION,
                 device_class=SensorDeviceClass.CO2,
                 state_class=SensorStateClass.MEASUREMENT,
+            ),
+        ]
+
+        purei9_entities = [
+            ApplianceSensor( 
+                name="Dustbin Status",
+                attr="dustbinStatus",
+                device_class=SensorDeviceClass.ENUM,
+            ),
+            ApplianceVacuum(
+                name="Vacuum",
+                attr="robotStatus",
             ),
         ]
 
@@ -266,7 +287,13 @@ class Appliance:
             ApplianceBinary(name="Safety Lock", attr="SafetyLock", device_class=BinarySensorDeviceClass.LOCK),
         ]
 
-        return common_entities + a9_entities + a7_entities + pure500_entities
+        return (
+            common_entities
+            + a9_entities
+            + a7_entities
+            + pure500_entities
+            + purei9_entities
+        )
 
     def get_entity(self, entity_type, entity_attr):
         return next(
@@ -284,7 +311,12 @@ class Appliance:
 
     def setup(self, data, capabilities):
         self.firmware = data.get("FrmVer_NIU")
-        self.mode = WorkMode(data.get("Workmode"))
+        if "Workmode" in data:
+            self.mode = WorkMode(data.get("Workmode"))
+        if "powerMode" in data:
+            self.power_mode = data.get("powerMode")
+        if "batteryStatus" in data:
+            self.battery_status = data.get("batteryStatus")
 
         self.capabilities = capabilities
         self.entities = [entity.setup(data) for entity in Appliance._create_entities(data) if entity.attr in data]
@@ -326,6 +358,23 @@ class Appliance:
 
         return 0, 0
 
+    @property
+    def battery_range(self) -> tuple[int, int]:
+        if self.model == Model.PUREi9:
+            return 2, 6 # Do not include lowest value of 1 to make this mean empty (0%) battery
+
+        return 0, 0
+
+    @property
+    def vacuum_fan_speeds(self) -> dict[int, str]:
+        if self.model == Model.PUREi9:
+            return {
+                1: "Quiet",
+                2: "Smart",
+                3: "Power",
+            }
+        return {}
+
 
 class Appliances:
     def __init__(self, appliances) -> None:
@@ -359,7 +408,10 @@ class WellbeingApiClient:
             _LOGGER.debug(f"Appliance initial: {appliance.initial_data}")
             _LOGGER.debug(f"Appliance state: {appliance.state}")
 
-            if appliance.device_type != "AIR_PURIFIER":
+            if (
+                appliance.device_type != "AIR_PURIFIER"
+                and appliance.device_type != "ROBOTIC_VACUUM_CLEANER"
+            ):
                 continue
 
             app = Appliance(appliance_name, appliance_id, model_name)
@@ -370,11 +422,34 @@ class WellbeingApiClient:
             data = appliance.state
             data["status"] = appliance.state_data.get("status", "unknown")
             data["connectionState"] = appliance.state_data.get("connectionState", "unknown")
+
             app.setup(data, appliance.capabilities_data)
 
             found_appliances[app.pnc_id] = app
 
         return Appliances(found_appliances)
+
+    async def command_vacuum(self, pnc_id: str, cmd: str):
+        data = {"CleaningCommand": cmd}
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            _LOGGER.error(
+                f"Failed to send vacuum command for appliance with id {pnc_id}"
+            )
+            return
+        result = await appliance.send_command(data)
+        _LOGGER.debug(f"Vacuum command: {result}")
+
+    async def set_vacuum_power_mode(self, pnc_id: str, mode: int):
+        data = {
+            "powerMode": mode
+        }  # Not the right formatting. Disable FAN_SPEEDS until this is figured out
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            _LOGGER.error(f"Failed to set feature {feature} for appliance with id {pnc_id}")
+            return
+        result = await appliance.send_command(data)
+        _LOGGER.debug(f"Set Vacuum Power Mode: {result}")
 
     async def set_fan_speed(self, pnc_id: str, level: int):
         data = {"Fanspeed": level}

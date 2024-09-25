@@ -23,7 +23,13 @@ from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, CONF_REFRESH_TOKEN
 from .const import DOMAIN
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
-PLATFORMS = [Platform.SENSOR, Platform.FAN, Platform.BINARY_SENSOR, Platform.SWITCH]
+PLATFORMS = [
+    Platform.SENSOR,
+    Platform.FAN,
+    Platform.BINARY_SENSOR,
+    Platform.SWITCH,
+    Platform.VACUUM,
+]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
