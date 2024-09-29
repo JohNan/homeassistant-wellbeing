@@ -207,7 +207,7 @@ class Appliance:
                 device_class=SensorDeviceClass.ENUM,
             ),
             ApplianceVacuum(
-                name="Vacuum",
+                name=data.get("applianceName","Vacuum"),
                 attr="robotStatus",
             ),
         ]
