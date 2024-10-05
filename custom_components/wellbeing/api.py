@@ -201,14 +201,19 @@ class Appliance:
         ]
 
         purei9_entities = [
+            ApplianceVacuum(
+                name=data.get("applianceName","Vacuum"),
+                attr="robotStatus",
+            ),
             ApplianceSensor( 
                 name="Dustbin Status",
                 attr="dustbinStatus",
                 device_class=SensorDeviceClass.ENUM,
             ),
-            ApplianceVacuum(
-                name=data.get("applianceName","Vacuum"),
+            ApplianceSensor(
+                name="Robot Status",
                 attr="robotStatus",
+                device_class=SensorDeviceClass.ENUM,
             ),
         ]
 
