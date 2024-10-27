@@ -19,6 +19,7 @@ from homeassistant.util.percentage import ranged_value_to_percentage
 from . import WellbeingDataUpdateCoordinator
 from .const import DOMAIN
 from .entity import WellbeingEntity
+from .api import Model
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
@@ -45,6 +46,11 @@ VACUUM_STATES = {
     12: STATE_DOCKED,  # Pitstop
     13: STATE_IDLE,  # Manual stearing
     14: STATE_IDLE,  # Firmware upgrading
+    "idle": STATE_IDLE,            # robot700series idle
+    "inProgress": STATE_CLEANING,  # robot700series cleaning
+    "goingHome": STATE_RETURNING,  # robot700series returning
+    "paused": STATE_PAUSED,        # robot700series paused
+    "sleeping": STATE_DOCKED,      # robot700series sleeping
 }
 
 VACUUM_CHARGING_STATE = 9 # For selecting battery icon
@@ -81,6 +87,7 @@ class WellbeingVacuum(WellbeingEntity, StateVacuumEntity):
     ):
         super().__init__(coordinator, config_entry, pnc_id, entity_type, entity_attr)
         self._fan_speeds = self.get_appliance.vacuum_fan_speeds
+        self.entity_model = self.get_appliance.model
 
     @property
     def _battery_range(self) -> tuple[int, int]:
@@ -132,16 +139,41 @@ class WellbeingVacuum(WellbeingEntity, StateVacuumEntity):
         return list(self._fan_speeds.values())
 
     async def async_start(self):
-        await self.api.command_vacuum(self.pnc_id, "play")
+        command=""
+        match self.entity_model:
+            case Model.PUREi9.value:
+                command="play"
+            case Model.Robot700series.value:
+                command="startGlobalClean"
+        _LOGGER.warning(f"VACUUM async_start {self.entity_type} {self.entity_attr} {command}")
+        await self.api.command_vacuum(self.pnc_id, command)
 
     async def async_stop(self):
-        await self.api.command_vacuum(self.pnc_id, "stop")
+        command=""
+        match self.entity_model:
+            case Model.PUREi9.value:
+                command="stop"
+            case Model.Robot700series.value:
+                command="stopClean"
+        await self.api.command_vacuum(self.pnc_id, command)
 
     async def async_pause(self):
-        await self.api.command_vacuum(self.pnc_id, "pause")
+        command=""
+        match self.entity_model:
+            case Model.PUREi9.value:
+                command="pause"
+            case Model.Robot700series.value:
+                command="pauseClean"
+        await self.api.command_vacuum(self.pnc_id, command)
 
     async def async_return_to_base(self):
-        await self.api.command_vacuum(self.pnc_id, "home")
+        command=""
+        match self.entity_model:
+            case Model.PUREi9.value:
+                command="home"
+            case Model.Robot700series.value:
+                command="startGoToCharger"
+        await self.api.command_vacuum(self.pnc_id, command)
 
     async def async_set_fan_speed(self, fan_speed: str):
         """Set the fan speed of the vacuum cleaner."""
