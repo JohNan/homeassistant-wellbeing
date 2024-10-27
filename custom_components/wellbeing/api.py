@@ -486,7 +486,7 @@ class WellbeingApiClient:
     async def set_vacuum_power_mode(self, pnc_id: str, mode: int):
         data = {
             "powerMode": mode
-        }  # Not the right formatting. Disable FAN_SPEEDS until this is figured out        data = {}
+        }  # Not the right formatting. Disable FAN_SPEEDS until this is figured out
 
         appliance = self._api_appliances.get(pnc_id, None)
         if appliance is None:
