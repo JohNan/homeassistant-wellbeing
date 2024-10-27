@@ -27,6 +27,20 @@ A custom component designed for [Home Assistant](https://www.home-assistant.io) 
     - EHAW4010AG
     - EHAW6020AG
 
+- Electrolux PUREi9 Vacuum Robot
+    - PUREi9
+    - PUREi9.2
+
+- Electrolux PUREi9 Vacuum Robot
+    - PUREi9
+    - PUREi9.2
+
+- Electrolux 600/700 Series Vacuum Robot
+    - Clean 600
+    - Hygienic 600
+    - Hygienic 700
+    - Ultimate 700
+
 - AEG AX5 Air Purifiers
     - AX51-304WT
 
@@ -40,6 +54,15 @@ A custom component designed for [Home Assistant](https://www.home-assistant.io) 
     - AX91-405DG
     - AX91-604GY
     - AX91-604DG
+
+- AEG RX9 Vacuum Robot
+    - RX9
+    - RX9.2
+
+- AEG 6000/7000 Series Vacuum Robot
+    - 6000 Robot Vacuum Cleaner
+    - 7000 Robot Vacuum Cleaner
+
 
 ### Install with HACS (recommended)
 
