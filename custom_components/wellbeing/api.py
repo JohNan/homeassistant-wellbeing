@@ -320,7 +320,6 @@ class Appliance:
             ApplianceBinary(name="Status", attr="status", entity_category=EntityCategory.DIAGNOSTIC),
             ApplianceBinary(name="Safety Lock", attr="SafetyLock", device_class=BinarySensorDeviceClass.LOCK),
         ]
-        _LOGGER.warning(f"_create_entities END")
 
         return (
             common_entities
