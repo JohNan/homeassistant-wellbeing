@@ -236,6 +236,7 @@ class Appliance:
             ApplianceSensor(
                 name="Battery Status",
                 attr="batteryStatus",
+                unit=PERCENTAGE,
                 device_class=SensorDeviceClass.BATTERY,
             ),
             ApplianceSensor(
