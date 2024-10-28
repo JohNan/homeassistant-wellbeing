@@ -392,7 +392,7 @@ class Appliance:
     def battery_range(self) -> tuple[int, int]:
         match Model(self.model):
             case Model.Robot700series.value:
-                return 0, 100
+                return 1, 100
             case Model.PUREi9.value:
                 return 2, 6 # Do not include lowest value of 1 to make this mean empty (0%) battery
         return 0, 0
