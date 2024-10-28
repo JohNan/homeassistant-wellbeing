@@ -234,12 +234,6 @@ class Appliance:
                 device_class=SensorDeviceClass.ENUM,
             ),
             ApplianceSensor(
-                name="Battery Status",
-                attr="batteryStatus",
-                unit=PERCENTAGE,
-                device_class=SensorDeviceClass.BATTERY,
-            ),
-            ApplianceSensor(
                 name="Charging Status",
                 attr="chargingStatus",
                 device_class=SensorDeviceClass.ENUM,
@@ -396,9 +390,11 @@ class Appliance:
 
     @property
     def battery_range(self) -> tuple[int, int]:
-        if self.model == Model.PUREi9:
-            return 2, 6 # Do not include lowest value of 1 to make this mean empty (0%) battery
-
+        match Model(self.model):
+            case Model.Robot700series.value:
+                return 1, 100
+            case Model.PUREi9.value:
+                return 2, 6 # Do not include lowest value of 1 to make this mean empty (0%) battery
         return 0, 0
 
     @property

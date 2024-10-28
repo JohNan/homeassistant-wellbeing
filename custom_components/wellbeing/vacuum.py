@@ -53,7 +53,7 @@ VACUUM_STATES = {
     "sleeping": STATE_DOCKED,      # robot700series sleeping
 }
 
-VACUUM_CHARGING_STATE = 9 # For selecting battery icon
+VACUUM_CHARGING_STATES = [9, 'idle']
 
 
 async def async_setup_entry(hass, entry, async_add_devices):
@@ -111,8 +111,11 @@ class WellbeingVacuum(WellbeingEntity, StateVacuumEntity):
     def battery_icon(self):
         """Return the battery icon of the vacuum based on the battery level."""
         level = self.battery_level
-        charging = self.get_entity.state == VACUUM_CHARGING_STATE
+
+        charging = self.get_entity.state in VACUUM_CHARGING_STATES
+
         level = 10*round(level / 10) # Round level to nearest 10 for icon selection
+
         # Special cases given available icons
         if level == 100 and charging:
             return "mdi:battery-charging-100"
@@ -145,7 +148,6 @@ class WellbeingVacuum(WellbeingEntity, StateVacuumEntity):
                 command="play"
             case Model.Robot700series.value:
                 command="startGlobalClean"
-        _LOGGER.warning(f"VACUUM async_start {self.entity_type} {self.entity_attr} {command}")
         await self.api.command_vacuum(self.pnc_id, command)
 
     async def async_stop(self):
