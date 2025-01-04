@@ -4,15 +4,7 @@ import asyncio
 import logging
 import math
 
-from homeassistant.components.vacuum import StateVacuumEntity, VacuumEntityFeature
-from homeassistant.components.vacuum import (
-    STATE_CLEANING,
-    STATE_PAUSED,
-    STATE_RETURNING,
-    STATE_IDLE,
-    STATE_DOCKED,
-    STATE_ERROR,
-)
+from homeassistant.components.vacuum import StateVacuumEntity, VacuumActivity, VacuumEntityFeature
 from homeassistant.const import Platform
 from homeassistant.util.percentage import ranged_value_to_percentage
 
@@ -31,26 +23,26 @@ SUPPORTED_FEATURES = (
     | VacuumEntityFeature.BATTERY
 )
 
-VACUUM_STATES = {
-    1: STATE_CLEANING,  # Regular Cleaning
-    2: STATE_PAUSED,
-    3: STATE_CLEANING,  # Stop cleaning
-    4: STATE_PAUSED,  # Pause Spot cleaning
-    5: STATE_RETURNING,
-    6: STATE_PAUSED,  # Paused returning
-    7: STATE_RETURNING,  # Returning for pitstop
-    8: STATE_PAUSED,  # Paused returning for pitstop
-    9: STATE_DOCKED,  # Charging
-    10: STATE_IDLE,
-    11: STATE_ERROR,
-    12: STATE_DOCKED,  # Pitstop
-    13: STATE_IDLE,  # Manual stearing
-    14: STATE_IDLE,  # Firmware upgrading
-    "idle": STATE_IDLE,            # robot700series idle
-    "inProgress": STATE_CLEANING,  # robot700series cleaning
-    "goingHome": STATE_RETURNING,  # robot700series returning
-    "paused": STATE_PAUSED,        # robot700series paused
-    "sleeping": STATE_DOCKED,      # robot700series sleeping
+VACUUM_ACTIVITIES = {
+    1: VacuumActivity.CLEANING,  # Regular Cleaning
+    2: VacuumActivity.PAUSED,
+    3: VacuumActivity.CLEANING,  # Stop cleaning
+    4: VacuumActivity.PAUSED,  # Pause Spot cleaning
+    5: VacuumActivity.RETURNING,
+    6: VacuumActivity.PAUSED,  # Paused returning
+    7: VacuumActivity.RETURNING,  # Returning for pitstop
+    8: VacuumActivity.PAUSED,  # Paused returning for pitstop
+    9: VacuumActivity.DOCKED,  # Charging
+    10: VacuumActivity.IDLE,
+    11: VacuumActivity.ERROR,
+    12: VacuumActivity.DOCKED,  # Pitstop
+    13: VacuumActivity.IDLE,  # Manual stearing
+    14: VacuumActivity.IDLE,  # Firmware upgrading
+    "idle": VacuumActivity.IDLE,            # robot700series idle
+    "inProgress": VacuumActivity.CLEANING,  # robot700series cleaning
+    "goingHome": VacuumActivity.RETURNING,  # robot700series returning
+    "paused": VacuumActivity.PAUSED,        # robot700series paused
+    "sleeping": VacuumActivity.DOCKED,      # robot700series sleeping
 }
 
 VACUUM_CHARGING_STATES = [9, 'idle']
@@ -98,9 +90,9 @@ class WellbeingVacuum(WellbeingEntity, StateVacuumEntity):
         return SUPPORTED_FEATURES
 
     @property
-    def state(self):
-        """Return the state of the vacuum."""
-        return VACUUM_STATES.get(self.get_entity.state, STATE_ERROR)
+    def activity(self):
+        """Return the current vacuum activity."""
+        return VACUUM_ACTIVITIES.get(self.get_entity.state, VacuumActivity.ERROR)
 
     @property
     def battery_level(self):
