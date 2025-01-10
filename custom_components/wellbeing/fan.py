@@ -15,14 +15,6 @@ from .entity import WellbeingEntity
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
-SUPPORTED_FEATURES = (
-    FanEntityFeature.SET_SPEED
-    | FanEntityFeature.PRESET_MODE
-    | FanEntityFeature.TURN_OFF
-    | FanEntityFeature.TURN_ON
-)
-
-
 async def async_setup_entry(hass, entry, async_add_devices):
     """Setup sensor platform."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
@@ -41,7 +33,13 @@ async def async_setup_entry(hass, entry, async_add_devices):
 
 class WellbeingFan(WellbeingEntity, FanEntity):
     """wellbeing Sensor class."""
-    _enable_turn_on_off_backwards_compatibility = False
+
+    _attr_supported_features = (
+            FanEntityFeature.SET_SPEED
+            | FanEntityFeature.PRESET_MODE
+            | FanEntityFeature.TURN_OFF
+            | FanEntityFeature.TURN_ON
+    )
 
     def __init__(self, coordinator: WellbeingDataUpdateCoordinator, config_entry, pnc_id, entity_type, entity_attr):
         super().__init__(coordinator, config_entry, pnc_id, entity_type, entity_attr)
@@ -90,11 +88,6 @@ class WellbeingFan(WellbeingEntity, FanEntity):
         self.async_write_ha_state()
         await asyncio.sleep(10)
         await self.coordinator.async_request_refresh()
-
-    @property
-    def supported_features(self):
-        """Flag supported features."""
-        return SUPPORTED_FEATURES
 
     @property
     def preset_mode(self):
