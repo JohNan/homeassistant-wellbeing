@@ -23,6 +23,7 @@ FILTER_TYPE = {
     48: "BREEZE Complete air filter",
     49: "CLEAN Ultrafine particle filter",
     51: "CARE Ultimate protect filter",
+    55: "Breathe 400 filter",
     64: "Breeze 360 filter",
     65: "Clean 360 Ultrafine particle filter",
     66: "Protect 360 filter",
@@ -32,6 +33,7 @@ FILTER_TYPE = {
     99: "Breeze 360 filter",
     100: "Fresh 360 filter",
     192: "FRESH Odour protect filter",
+    194: "FRESH Odour protect filter",
     0: "Filter",
 }
 
@@ -47,6 +49,7 @@ class Model(str, Enum):
     AX7 = "AX7"
     AX9 = "AX9"
     PUREi9 = "PUREi9"
+    PM700 = "Verbier" # "PUREMULTI700"
     Robot700series = "700series"     # 700series vacuum robot series
 
 
@@ -58,6 +61,11 @@ class WorkMode(str, Enum):
     QUITE = "Quiet"
     AUTO = "Auto"
 
+class LouverSwingMode(str, Enum):
+    OFF = "off"
+    NARROW = "narrow"
+    WIDE = "wide"
+    NATURAL_BREEZE = "naturalbreeze"
 
 class ApplianceEntity:
     entity_type: int | None = None
@@ -162,6 +170,47 @@ class Appliance:
             ),
         ]
 
+        pm700_entities = [
+            ApplianceSensor(
+                name=f"{FILTER_TYPE.get(data.get('FilterType_1', 0), 'Unknown filter')} Life",
+                attr="FilterLife_1",
+                unit=PERCENTAGE,
+            ),
+            ApplianceSensor(
+                name=f"{FILTER_TYPE.get(data.get('FilterType_2', 0), 'Unknown filter')} Life",
+                attr="FilterLife_2",
+                unit=PERCENTAGE,
+            ),
+            
+            ApplianceBinary(
+                name="Ionizer",
+                attr="Ionizer",
+                device_class=BinarySensorDeviceClass.RUNNING,
+            ),
+            ApplianceBinary(
+                name="AQI Light",
+                attr="AQILight",
+                device_class=BinarySensorDeviceClass.LIGHT,
+            ),
+            ApplianceBinary(
+                name="Humidification",
+                attr="Humidification",
+                device_class=BinarySensorDeviceClass.RUNNING,
+            ),
+            ApplianceSensor(
+                name="Humidification Target",
+                attr="HumidityTarget",
+                unit=PERCENTAGE,
+            ),
+            
+            ApplianceSensor(name="Louver Swing", attr="LouverSwing", device_class=SensorDeviceClass.ENUM),
+            ApplianceBinary(
+                name="Empty Water Tray",
+                attr="WaterTrayLevelLow",
+                device_class=BinarySensorDeviceClass.PROBLEM,
+            ),
+            
+        ]
         a7_entities = [
             ApplianceSensor(
                 name=f"{FILTER_TYPE.get(data.get('FilterType_1', 0), 'Unknown filter')} Life",
@@ -321,6 +370,7 @@ class Appliance:
             + a9_entities
             + a7_entities
             + pure500_entities
+            + pm700_entities
             + purei9_entities
             + Robot700series_entities
         )
@@ -343,6 +393,8 @@ class Appliance:
         self.firmware = data.get("FrmVer_NIU")
         if "Workmode" in data:
             self.mode = WorkMode(data.get("Workmode"))
+        if "LouverSwingWorkmode" in data:
+            self.louver_swing_mode = LouverSwingMode(data.get("LouverSwing"))
         if "powerMode" in data:
             self.power_mode = data.get("powerMode")
         if "batteryStatus" in data:
@@ -385,6 +437,8 @@ class Appliance:
             return 1, 5
         if self.model == Model.AX9:
             return 1, 9
+        if self.model == Model.PM700:
+            return 1, 5
 
         return 0, 0
 
@@ -443,6 +497,7 @@ class WellbeingApiClient:
             if (
                 appliance.device_type != "AIR_PURIFIER"
                 and appliance.device_type != "ROBOTIC_VACUUM_CLEANER"
+                and appliance.device_type != "MULTI_AIR_PURIFIER"
             ):
                 continue
 
