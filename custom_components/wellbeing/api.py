@@ -487,7 +487,7 @@ class WellbeingApiClient:
         for appliance in (appliance for appliance in appliances):
             await appliance.async_update()
 
-            model_name = appliance.type #?!
+            model_name = appliance.type
             appliance_id = appliance.id
             appliance_name = appliance.name
 
