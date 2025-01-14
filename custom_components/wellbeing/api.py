@@ -171,22 +171,6 @@ class Appliance:
         ]
 
         pm700_entities = [
-            ApplianceSensor(
-                name=f"{FILTER_TYPE.get(data.get('FilterType_1', 0), 'Unknown filter')} Life",
-                attr="FilterLife_1",
-                unit=PERCENTAGE,
-            ),
-            ApplianceSensor(
-                name=f"{FILTER_TYPE.get(data.get('FilterType_2', 0), 'Unknown filter')} Life",
-                attr="FilterLife_2",
-                unit=PERCENTAGE,
-            ),
-            
-            ApplianceBinary(
-                name="Ionizer",
-                attr="Ionizer",
-                device_class=BinarySensorDeviceClass.RUNNING,
-            ),
             ApplianceBinary(
                 name="AQI Light",
                 attr="AQILight",
@@ -202,26 +186,19 @@ class Appliance:
                 attr="HumidityTarget",
                 unit=PERCENTAGE,
             ),
-            
-            ApplianceSensor(name="Louver Swing", attr="LouverSwing", device_class=SensorDeviceClass.ENUM),
+            ApplianceSensor(
+                name="Louver Swing",
+                attr="LouverSwing",
+                device_class=SensorDeviceClass.ENUM
+            ),
             ApplianceBinary(
                 name="Empty Water Tray",
                 attr="WaterTrayLevelLow",
                 device_class=BinarySensorDeviceClass.PROBLEM,
             ),
-            
         ]
+
         a7_entities = [
-            ApplianceSensor(
-                name=f"{FILTER_TYPE.get(data.get('FilterType_1', 0), 'Unknown filter')} Life",
-                attr="FilterLife_1",
-                unit=PERCENTAGE,
-            ),
-            ApplianceSensor(
-                name=f"{FILTER_TYPE.get(data.get('FilterType_2', 0), 'Unknown filter')} Life",
-                attr="FilterLife_2",
-                unit=PERCENTAGE,
-            ),
             ApplianceSensor(
                 name="State",
                 attr="State",
@@ -291,6 +268,16 @@ class Appliance:
         ]
 
         common_entities = [
+            ApplianceSensor(
+                name=f"{FILTER_TYPE.get(data.get('FilterType_1', 0), 'Unknown filter')} Life",
+                attr="FilterLife_1",
+                unit=PERCENTAGE,
+            ),
+            ApplianceSensor(
+                name=f"{FILTER_TYPE.get(data.get('FilterType_2', 0), 'Unknown filter')} Life",
+                attr="FilterLife_2",
+                unit=PERCENTAGE,
+            ),
             ApplianceFan(
                 name="Fan Speed",
                 attr="Fanspeed",
@@ -347,8 +334,16 @@ class Appliance:
                 device_class=SensorDeviceClass.ENUM,
                 entity_category=EntityCategory.DIAGNOSTIC,
             ),
-            ApplianceBinary(name="Ionizer", attr="Ionizer"),
-            ApplianceBinary(name="UI Light", attr="UILight"),
+            ApplianceBinary(
+                name="Ionizer",
+                attr="Ionizer",
+                device_class=BinarySensorDeviceClass.RUNNING,
+            ),
+            ApplianceBinary(
+                name="UI Light",
+                attr="UILight",
+                device_class=BinarySensorDeviceClass.LIGHT,
+            ),
             ApplianceBinary(
                 name="Door Open",
                 attr="DoorOpen",
