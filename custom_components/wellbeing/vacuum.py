@@ -1,8 +1,6 @@
 """Vacuum platform for Wellbeing."""
 
-import asyncio
 import logging
-import math
 
 from homeassistant.components.vacuum import StateVacuumEntity, VacuumActivity, VacuumEntityFeature
 from homeassistant.const import Platform
@@ -12,6 +10,7 @@ from . import WellbeingDataUpdateCoordinator
 from .const import DOMAIN
 from .entity import WellbeingEntity
 from .api import Model
+from typing import Any
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
@@ -38,14 +37,14 @@ VACUUM_ACTIVITIES = {
     12: VacuumActivity.DOCKED,  # Pitstop
     13: VacuumActivity.IDLE,  # Manual stearing
     14: VacuumActivity.IDLE,  # Firmware upgrading
-    "idle": VacuumActivity.IDLE,            # robot700series idle
+    "idle": VacuumActivity.IDLE,  # robot700series idle
     "inProgress": VacuumActivity.CLEANING,  # robot700series cleaning
     "goingHome": VacuumActivity.RETURNING,  # robot700series returning
-    "paused": VacuumActivity.PAUSED,        # robot700series paused
-    "sleeping": VacuumActivity.DOCKED,      # robot700series sleeping
+    "paused": VacuumActivity.PAUSED,  # robot700series paused
+    "sleeping": VacuumActivity.DOCKED,  # robot700series sleeping
 }
 
-VACUUM_CHARGING_STATES = [9, 'idle']
+VACUUM_CHARGING_STATES = [9, "idle"]
 
 
 async def async_setup_entry(hass, entry, async_add_devices):
@@ -57,9 +56,7 @@ async def async_setup_entry(hass, entry, async_add_devices):
         for pnc_id, appliance in appliances.appliances.items():
             async_add_devices(
                 [
-                    WellbeingVacuum(
-                        coordinator, entry, pnc_id, entity.entity_type, entity.attr
-                    )
+                    WellbeingVacuum(coordinator, entry, pnc_id, entity.entity_type, entity.attr)
                     for entity in appliance.entities
                     if entity.entity_type == Platform.VACUUM
                 ]
@@ -106,7 +103,7 @@ class WellbeingVacuum(WellbeingEntity, StateVacuumEntity):
 
         charging = self.get_entity.state in VACUUM_CHARGING_STATES
 
-        level = 10*round(level / 10) # Round level to nearest 10 for icon selection
+        level = 10 * round(level / 10)  # Round level to nearest 10 for icon selection
 
         # Special cases given available icons
         if level == 100 and charging:
@@ -134,44 +131,44 @@ class WellbeingVacuum(WellbeingEntity, StateVacuumEntity):
         return list(self._fan_speeds.values())
 
     async def async_start(self):
-        command=""
+        command = ""
         match self.entity_model:
             case Model.PUREi9.value:
-                command="play"
+                command = "play"
             case Model.Robot700series.value:
-                command="startGlobalClean"
+                command = "startGlobalClean"
         await self.api.command_vacuum(self.pnc_id, command)
 
     async def async_stop(self):
-        command=""
+        command = ""
         match self.entity_model:
             case Model.PUREi9.value:
-                command="stop"
+                command = "stop"
             case Model.Robot700series.value:
-                command="stopClean"
+                command = "stopClean"
         await self.api.command_vacuum(self.pnc_id, command)
 
     async def async_pause(self):
-        command=""
+        command = ""
         match self.entity_model:
             case Model.PUREi9.value:
-                command="pause"
+                command = "pause"
             case Model.Robot700series.value:
-                command="pauseClean"
+                command = "pauseClean"
         await self.api.command_vacuum(self.pnc_id, command)
 
     async def async_return_to_base(self):
-        command=""
+        command = ""
         match self.entity_model:
             case Model.PUREi9.value:
-                command="home"
+                command = "home"
             case Model.Robot700series.value:
-                command="startGoToCharger"
+                command = "startGoToCharger"
         await self.api.command_vacuum(self.pnc_id, command)
 
-    async def async_set_fan_speed(self, fan_speed: str):
+    async def async_set_fan_speed(self, fan_speed: str, **kwargs: Any):
         """Set the fan speed of the vacuum cleaner."""
-        for mode, name in FAN_SPEEDS.items():
+        for mode, name in self._fan_speeds.items():
             if name == fan_speed:
                 await self.api.set_vacuum_power_mode(self.pnc_id, mode)
                 break
