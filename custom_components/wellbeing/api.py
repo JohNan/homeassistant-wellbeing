@@ -2,7 +2,6 @@
 
 import logging
 from enum import Enum
-from typing import cast, Any, Callable
 
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
@@ -49,8 +48,9 @@ class Model(str, Enum):
     AX7 = "AX7"
     AX9 = "AX9"
     PUREi9 = "PUREi9"
-    PM700 = "Verbier" # "PUREMULTI700"
-    Robot700series = "700series"     # 700series vacuum robot series
+    PM700 = "Verbier"  # "PUREMULTI700"
+    Robot700series = "700series"  # 700series vacuum robot series
+    UltimateHome700 = "UltimateHome 700"  # Dehumidifier
 
 
 class WorkMode(str, Enum):
@@ -61,11 +61,13 @@ class WorkMode(str, Enum):
     QUITE = "Quiet"
     AUTO = "Auto"
 
+
 class LouverSwingMode(str, Enum):
     OFF = "off"
     NARROW = "narrow"
     WIDE = "wide"
     NATURAL_BREEZE = "naturalbreeze"
+
 
 class ApplianceEntity:
     entity_type: int | None = None
@@ -155,6 +157,57 @@ class Appliance:
 
     @staticmethod
     def _create_entities(data):
+        ultimateHome700 = [
+            ApplianceSensor(
+                name="PM2.5",
+                attr="pm25",
+                unit=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+                device_class=SensorDeviceClass.PM25,
+                state_class=SensorStateClass.MEASUREMENT,
+            ),
+            ApplianceSensor(name="Hepa Filter", attr="hepaFilterState", device_class=SensorDeviceClass.ENUM),
+            ApplianceSensor(name="Operative Mode", attr="operativeMode", device_class=SensorDeviceClass.ENUM),
+            ApplianceSensor(name="Air Quality", attr="airQualityState", device_class=SensorDeviceClass.ENUM),
+            ApplianceSensor(
+                name="Ambient Temperature (Fahrenheit)",
+                attr="ambientTemperatureF",
+                unit=UnitOfTemperature.FAHRENHEIT,
+                device_class=SensorDeviceClass.TEMPERATURE,
+                state_class=SensorStateClass.MEASUREMENT,
+            ),
+            ApplianceSensor(
+                name="Ambient Temperature (Celsius)",
+                attr="ambientTemperatureC",
+                unit=UnitOfTemperature.CELSIUS,
+                device_class=SensorDeviceClass.TEMPERATURE,
+                state_class=SensorStateClass.MEASUREMENT,
+            ),
+            ApplianceSensor(
+                name="Humidity",
+                attr="sensorHumidity",
+                unit=PERCENTAGE,
+                device_class=SensorDeviceClass.HUMIDITY,
+                state_class=SensorStateClass.MEASUREMENT,
+            ),
+            ApplianceBinary(
+                name="Connection State",
+                attr="connectivityState",
+                device_class=BinarySensorDeviceClass.CONNECTIVITY,
+                entity_category=EntityCategory.DIAGNOSTIC,
+            ),
+            ApplianceBinary(name="Clean Air", attr="cleanAirMode"),
+            ApplianceBinary(name="Vertical Swing", attr="verticalSwing"),
+            ApplianceBinary(name="Water Tank Full", attr="waterTankFull"),
+            ApplianceBinary(name="Sppliance State", attr="applianceState"),
+            ApplianceBinary(name="UI Lock", attr="uiLockMode", device_class=BinarySensorDeviceClass.LOCK),
+            ApplianceSensor(
+                name="Target Humidity",
+                attr="targetHumidity",
+            ),
+            ApplianceSensor(name="Fan Speed Setting", attr="fanSpeedSetting", device_class=SensorDeviceClass.ENUM),
+            ApplianceSensor(name="Fan Speed State", attr="fanSpeedState", device_class=SensorDeviceClass.ENUM),
+        ]
+
         pure500_entities = [
             ApplianceSensor(
                 name="PM2.5",
@@ -186,11 +239,7 @@ class Appliance:
                 attr="HumidityTarget",
                 unit=PERCENTAGE,
             ),
-            ApplianceSensor(
-                name="Louver Swing",
-                attr="LouverSwing",
-                device_class=SensorDeviceClass.ENUM
-            ),
+            ApplianceSensor(name="Louver Swing", attr="LouverSwing", device_class=SensorDeviceClass.ENUM),
             ApplianceBinary(
                 name="Empty Water Tray",
                 attr="WaterTrayLevelLow",
@@ -229,10 +278,10 @@ class Appliance:
 
         purei9_entities = [
             ApplianceVacuum(
-                name=data.get("applianceName","Vacuum"),
+                name=data.get("applianceName", "Vacuum"),
                 attr="robotStatus",
             ),
-            ApplianceSensor( 
+            ApplianceSensor(
                 name="Dustbin Status",
                 attr="dustbinStatus",
                 device_class=SensorDeviceClass.ENUM,
@@ -245,10 +294,7 @@ class Appliance:
         ]
 
         Robot700series_entities = [
-            ApplianceVacuum(
-                name="Robot Status",
-                attr="state"
-            ),
+            ApplianceVacuum(name="Robot Status", attr="state"),
             ApplianceSensor(
                 name="Cleaning Mode",
                 attr="cleaningMode",
@@ -368,6 +414,7 @@ class Appliance:
             + pm700_entities
             + purei9_entities
             + Robot700series_entities
+            + ultimateHome700
         )
 
     def get_entity(self, entity_type, entity_attr):
@@ -385,7 +432,10 @@ class Appliance:
         self.mode = mode
 
     def setup(self, data, capabilities):
-        self.firmware = data.get("FrmVer_NIU")
+        if "FrmVer_NIU" in data:
+            self.firmware = data.get("FrmVer_NIU")
+        if "applianceUiSwVersion" in data:
+            self.firmware = data.get("applianceUiSwVersion")
         if "Workmode" in data:
             self.mode = WorkMode(data.get("Workmode"))
         if "LouverSwingWorkmode" in data:
@@ -443,7 +493,7 @@ class Appliance:
             case Model.Robot700series.value:
                 return 1, 100
             case Model.PUREi9.value:
-                return 2, 6 # Do not include lowest value of 1 to make this mean empty (0%) battery
+                return 2, 6  # Do not include lowest value of 1 to make this mean empty (0%) battery
         return 0, 0
 
     @property
@@ -493,6 +543,7 @@ class WellbeingApiClient:
                 appliance.device_type != "AIR_PURIFIER"
                 and appliance.device_type != "ROBOTIC_VACUUM_CLEANER"
                 and appliance.device_type != "MULTI_AIR_PURIFIER"
+                and appliance.device_type != "DEHUMIDIFIER"
             ):
                 continue
 
@@ -514,9 +565,7 @@ class WellbeingApiClient:
     async def command_vacuum(self, pnc_id: str, cmd: str):
         appliance = self._api_appliances.get(pnc_id, None)
         if appliance is None:
-            _LOGGER.error(
-                f"Failed to send vacuum command for appliance with id {pnc_id}"
-            )
+            _LOGGER.error(f"Failed to send vacuum command for appliance with id {pnc_id}")
             return
 
         data = {}
@@ -530,9 +579,7 @@ class WellbeingApiClient:
         _LOGGER.debug(f"Vacuum command: {result}")
 
     async def set_vacuum_power_mode(self, pnc_id: str, mode: int):
-        data = {
-            "powerMode": mode
-        }  # Not the right formatting. Disable FAN_SPEEDS until this is figured out
+        data = {"powerMode": mode}  # Not the right formatting. Disable FAN_SPEEDS until this is figured out
 
         appliance = self._api_appliances.get(pnc_id, None)
         if appliance is None:
