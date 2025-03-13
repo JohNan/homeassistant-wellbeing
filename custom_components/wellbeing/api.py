@@ -51,6 +51,7 @@ class Model(str, Enum):
     PM700 = "Verbier"  # "PUREMULTI700"
     Robot700series = "700series"  # 700series vacuum robot series
     UltimateHome700 = "UltimateHome 700"  # Dehumidifier
+    VacuumHygienic700 = "Gordias"  # HYGIENIC700
 
 
 class WorkMode(str, Enum):
@@ -157,7 +158,7 @@ class Appliance:
 
     @staticmethod
     def _create_entities(data):
-        ultimateHome700 = [
+        ultimate_home_700_entities = [
             ApplianceSensor(
                 name="PM2.5",
                 attr="pm25",
@@ -293,7 +294,7 @@ class Appliance:
             ),
         ]
 
-        Robot700series_entities = [
+        vacuum_700_series_entities = [
             ApplianceVacuum(name="Robot Status", attr="state"),
             ApplianceSensor(
                 name="Cleaning Mode",
@@ -311,6 +312,14 @@ class Appliance:
                 device_class=SensorDeviceClass.ENUM,
             ),
             ApplianceBinary(name="Mop Installed", attr="mopInstalled"),
+        ]
+
+        vacuum_hygienic_700_entities = [
+            ApplianceSensor(
+                name="Vacuum Mode",
+                attr="vacuumMode",
+                device_class=SensorDeviceClass.ENUM,
+            ),
         ]
 
         common_entities = [
@@ -413,8 +422,9 @@ class Appliance:
             + pure500_entities
             + pm700_entities
             + purei9_entities
-            + Robot700series_entities
-            + ultimateHome700
+            + ultimate_home_700_entities
+            + vacuum_700_series_entities
+            + vacuum_hygienic_700_entities
         )
 
     def get_entity(self, entity_type, entity_attr):
@@ -434,6 +444,8 @@ class Appliance:
     def setup(self, data, capabilities):
         if "FrmVer_NIU" in data:
             self.firmware = data.get("FrmVer_NIU")
+        if "VmNo_NIU" in data:
+            self.firmware = data.get("VmNo_NIU")
         if "applianceUiSwVersion" in data:
             self.firmware = data.get("applianceUiSwVersion")
         if "Workmode" in data:
