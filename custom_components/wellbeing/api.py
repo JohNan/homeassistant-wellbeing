@@ -314,7 +314,7 @@ class Appliance:
             ApplianceBinary(name="Mop Installed", attr="mopInstalled"),
         ]
 
-        vacuum_hygenic_700_entities = [
+        vacuum_hygienic_700_entities = [
             ApplianceSensor(
                 name="Vacuum Mode",
                 attr="vacuumMode",
@@ -424,7 +424,7 @@ class Appliance:
             + purei9_entities
             + ultimate_home_700_entities
             + vacuum_700_series_entities
-            + vacuum_hygenic_700_entities
+            + vacuum_hygienic_700_entities
         )
 
     def get_entity(self, entity_type, entity_attr):
