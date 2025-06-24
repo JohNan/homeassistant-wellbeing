@@ -448,6 +448,8 @@ class Appliance:
             self.firmware = data.get("VmNo_NIU")
         if "applianceUiSwVersion" in data:
             self.firmware = data.get("applianceUiSwVersion")
+        if "firmwareVersion" in data:
+            self.firmware = data.get("firmwareVersion")
         if not hasattr(self, "firmware"):
             self.firmware = ""
         if "Workmode" in data:
