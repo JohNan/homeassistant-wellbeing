@@ -27,7 +27,7 @@ A custom component designed for [Home Assistant](https://www.home-assistant.io) 
     - EHAW4010AG
     - EHAW6020AG
 
-- Electrolux Pure Multi 700 Humidifier-Purifier 
+- Electrolux Pure Multi 700 Humidifier-Purifier
     - EPU73771DG (all data is readable, but only fan can be controlled)
 
 - Electrolux PUREi9 Vacuum Robot
