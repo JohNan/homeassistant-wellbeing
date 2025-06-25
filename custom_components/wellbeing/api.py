@@ -582,7 +582,7 @@ class WellbeingApiClient:
         """Start a vacuum cleaner."""
         appliance = self._api_appliances.get(pnc_id, None)
         if appliance is None:
-            _LOGGER.error(f"Failed to find appliance with id {pnc_id} for vacuum start command")
+            _LOGGER.error(f"Failed to send vacuum start command for appliance with id {pnc_id}")
             return
         data = {}
         match Model(appliance.type):
@@ -597,7 +597,7 @@ class WellbeingApiClient:
         """Stop a vacuum cleaner."""
         appliance = self._api_appliances.get(pnc_id, None)
         if appliance is None:
-            _LOGGER.error(f"Failed to find appliance with id {pnc_id} for vacuum stop command")
+            _LOGGER.error(f"Failed to send vacuum stop command for appliance with id {pnc_id}")
             return
         data = {}
         match Model(appliance.type):
@@ -612,7 +612,7 @@ class WellbeingApiClient:
         """Pause a vacuum cleaner."""
         appliance = self._api_appliances.get(pnc_id, None)
         if appliance is None:
-            _LOGGER.error(f"Failed to find appliance with id {pnc_id} for vacuum pause command")
+            _LOGGER.error(f"Failed to send vacuum pause command for appliance with id {pnc_id}")
             return
         data = {}
         match Model(appliance.type):
@@ -627,7 +627,7 @@ class WellbeingApiClient:
         """Return a vacuum cleaner to its base."""
         appliance = self._api_appliances.get(pnc_id, None)
         if appliance is None:
-            _LOGGER.error(f"Failed to find appliance with id {pnc_id} for vacuum return to base command")
+            _LOGGER.error(f"Failed to send vacuum return to base command for appliance with id {pnc_id}")
             return
         data = {}
         match Model(appliance.type):
