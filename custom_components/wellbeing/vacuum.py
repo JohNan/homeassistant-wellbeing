@@ -19,6 +19,7 @@ SUPPORTED_FEATURES = (
     | VacuumEntityFeature.PAUSE
     | VacuumEntityFeature.RETURN_HOME
     | VacuumEntityFeature.BATTERY
+    | VacuumEntityFeature.SEND_COMMAND
 )
 
 VACUUM_ACTIVITIES = {

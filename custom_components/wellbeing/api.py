@@ -5,6 +5,7 @@ from enum import Enum
 
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.const import (
     UnitOfTemperature,
     PERCENTAGE,
@@ -639,7 +640,7 @@ class WellbeingApiClient:
 
     async def vacuum_send_command(self, pnc_id: str, command: str, params: dict | None = None):
         """Send a command to the vacuum cleaner. Currently not used for any specific command."""
-        return
+        raise ServiceValidationError(f"Command '{command}' is not recognized for appliance with id {pnc_id}")
 
     async def set_vacuum_power_mode(self, pnc_id: str, mode: int):
         data = {"powerMode": mode}  # Not impemented by the Electrolux API. Disable FAN_SPEEDS until this is resolved.
