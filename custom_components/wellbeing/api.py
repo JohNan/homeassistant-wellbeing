@@ -442,6 +442,7 @@ class Appliance:
         self.mode = mode
 
     def setup(self, data, capabilities):
+        self.firmware = ""
         if "FrmVer_NIU" in data:
             self.firmware = data.get("FrmVer_NIU")
         if "VmNo_NIU" in data:
@@ -450,8 +451,6 @@ class Appliance:
             self.firmware = data.get("applianceUiSwVersion")
         if "firmwareVersion" in data:
             self.firmware = data.get("firmwareVersion")
-        if not hasattr(self, "firmware"):
-            self.firmware = ""
         if "Workmode" in data:
             self.mode = WorkMode(data.get("Workmode"))
         if "LouverSwingWorkmode" in data:
