@@ -5,6 +5,7 @@ from enum import Enum
 
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.const import (
     UnitOfTemperature,
     PERCENTAGE,
@@ -577,24 +578,72 @@ class WellbeingApiClient:
 
         return Appliances(found_appliances)
 
-    async def command_vacuum(self, pnc_id: str, cmd: str):
+    async def vacuum_start(self, pnc_id: str):
+        """Start a vacuum cleaner."""
         appliance = self._api_appliances.get(pnc_id, None)
         if appliance is None:
-            _LOGGER.error(f"Failed to send vacuum command for appliance with id {pnc_id}")
+            _LOGGER.error(f"Failed to send vacuum start command for appliance with id {pnc_id}")
             return
-
         data = {}
         match Model(appliance.type):
             case Model.Robot700series.value:
-                data = {"cleaningCommand": cmd}
+                data = {"cleaningCommand": "startGlobalClean"}
             case Model.PUREi9.value:
-                data = {"CleaningCommand": cmd}
-
+                data = {"CleaningCommand": "play"}
         result = await appliance.send_command(data)
-        _LOGGER.debug(f"Vacuum command: {result}")
+        _LOGGER.debug(f"Vacuum start command: {result}")
+
+    async def vacuum_stop(self, pnc_id: str):
+        """Stop a vacuum cleaner."""
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            _LOGGER.error(f"Failed to send vacuum stop command for appliance with id {pnc_id}")
+            return
+        data = {}
+        match Model(appliance.type):
+            case Model.Robot700series.value:
+                data = {"cleaningCommand": "stopClean"}
+            case Model.PUREi9.value:
+                data = {"CleaningCommand": "stop"}
+        result = await appliance.send_command(data)
+        _LOGGER.debug(f"Vacuum stop command: {result}")
+
+    async def vacuum_pause(self, pnc_id: str):
+        """Pause a vacuum cleaner."""
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            _LOGGER.error(f"Failed to send vacuum pause command for appliance with id {pnc_id}")
+            return
+        data = {}
+        match Model(appliance.type):
+            case Model.Robot700series.value:
+                data = {"cleaningCommand": "pauseClean"}
+            case Model.PUREi9.value:
+                data = {"CleaningCommand": "pause"}
+        result = await appliance.send_command(data)
+        _LOGGER.debug(f"Vacuum pause command: {result}")
+
+    async def vacuum_return_to_base(self, pnc_id: str):
+        """Return a vacuum cleaner to its base."""
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            _LOGGER.error(f"Failed to send vacuum return to base command for appliance with id {pnc_id}")
+            return
+        data = {}
+        match Model(appliance.type):
+            case Model.Robot700series.value:
+                data = {"cleaningCommand": "startGoToCharger"}
+            case Model.PUREi9.value:
+                data = {"CleaningCommand": "home"}
+        result = await appliance.send_command(data)
+        _LOGGER.debug(f"Vacuum return to base command: {result}")
+
+    async def vacuum_send_command(self, pnc_id: str, command: str, params: dict | None = None):
+        """Send a command to the vacuum cleaner. Currently not used for any specific command."""
+        raise ServiceValidationError(f"Command '{command}' is not recognized for appliance with id {pnc_id}")
 
     async def set_vacuum_power_mode(self, pnc_id: str, mode: int):
-        data = {"powerMode": mode}  # Not the right formatting. Disable FAN_SPEEDS until this is figured out
+        data = {"powerMode": mode}  # Not impemented by the Electrolux API. Disable FAN_SPEEDS until this is resolved.
 
         appliance = self._api_appliances.get(pnc_id, None)
         if appliance is None:
