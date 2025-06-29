@@ -62,7 +62,7 @@ A custom component designed for [Home Assistant](https://www.home-assistant.io) 
     - 6000 Robot Vacuum Cleaner
     - 7000 Robot Vacuum Cleaner
 
-For special capabilities of specific appliances, please refer to the[brief manual](MANUAL.md).
+For special capabilities of specific appliances, please refer to the [brief manual](MANUAL.md).
 
 ### Install with HACS (recommended)
 
