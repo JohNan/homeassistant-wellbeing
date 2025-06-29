@@ -34,10 +34,6 @@ A custom component designed for [Home Assistant](https://www.home-assistant.io) 
     - PUREi9
     - PUREi9.2
 
-- Electrolux PUREi9 Vacuum Robot
-    - PUREi9
-    - PUREi9.2
-
 - Electrolux 600/700 Series Vacuum Robot
     - Clean 600
     - Hygienic 600
@@ -66,6 +62,7 @@ A custom component designed for [Home Assistant](https://www.home-assistant.io) 
     - 6000 Robot Vacuum Cleaner
     - 7000 Robot Vacuum Cleaner
 
+For special capabilities of specific appliances, please refer to the[brief manual](MANUAL.md).
 
 ### Install with HACS (recommended)
 
