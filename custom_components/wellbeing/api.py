@@ -18,6 +18,7 @@ from homeassistant.const import (
 from homeassistant.helpers.typing import UNDEFINED
 from pyelectroluxgroup.api import ElectroluxHubAPI
 from pyelectroluxgroup.appliance import Appliance as ApiAppliance
+import voluptuous as vol
 
 FILTER_TYPE = {
     48: "BREEZE Complete air filter",
@@ -36,6 +37,36 @@ FILTER_TYPE = {
     194: "FRESH Odour protect filter",
     0: "Filter",
 }
+
+PUREi9_POWER_MODES = {
+    1: "Quiet",
+    2: "Smart",
+    3: "Power",
+}
+
+# Schemas for definition of an interactive map and its zones for the PUREi9 vacuum cleaner.
+INTERACTIVE_MAP_ZONE_SCHEMA = vol.Schema(
+    {
+        vol.Required("name"): str,
+        vol.Optional("power_mode"): str,
+    }
+)
+INTERACTIVE_MAP_SCHEMA = vol.Schema(
+    {
+        vol.Required("map"): str,
+        vol.Required("zones"): [
+            lambda value: (
+                {"name": value}
+                if isinstance(value, str)
+                else (
+                    INTERACTIVE_MAP_ZONE_SCHEMA(value)
+                    if isinstance(value, dict)
+                    else (_ for _ in ()).throw(vol.Invalid("Zone entry must be a string or a dict with a 'name' key"))
+                )
+            )
+        ],
+    }
+)
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
@@ -515,11 +546,7 @@ class Appliance:
     @property
     def vacuum_fan_speeds(self) -> dict[int, str]:
         if self.model == Model.PUREi9:
-            return {
-                1: "Quiet",
-                2: "Smart",
-                3: "Power",
-            }
+            return PUREi9_POWER_MODES
         return {}
 
 
@@ -640,6 +667,44 @@ class WellbeingApiClient:
 
     async def vacuum_send_command(self, pnc_id: str, command: str, params: dict | None = None):
         """Send a command to the vacuum cleaner. Currently not used for any specific command."""
+
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            _LOGGER.error(f"Failed to send command '{command}' for appliance with id {pnc_id}")
+            return
+
+        if command == "clean_zones" and appliance.type == Model.PUREi9.value:
+            # Validate and process the parameters for the PUREi9 interactive map command.
+            try:
+                params = INTERACTIVE_MAP_SCHEMA(params)
+            except vol.Invalid as e:
+                raise ServiceValidationError(f"Invalid parameters for command '{command}': {e}") from e
+            assert isinstance(params, dict)  # Needed for mypy type checking
+            # Build the command payload for the PUREi9 interactive map.
+            api_maps = await appliance.async_get_interactive_maps()
+            api_map = next((m for m in api_maps if m.name == params["map"]), None)
+            if not api_map:
+                raise ServiceValidationError(f"Map '{params['map']}' not found for appliance with id {pnc_id}")
+            zones_payload = []
+            for zone in params["zones"]:
+                api_zone = next((z for z in api_map.zones if z.name == zone["name"]), None)
+                if not api_zone:
+                    raise ServiceValidationError(f"Zone '{zone['name']}' not found in map '{params['map']}'")
+                if "power_mode" in zone:
+                    mode_value = next((k for k, v in PUREi9_POWER_MODES.items() if v == zone["power_mode"]), None)
+                    if mode_value is None:
+                        raise ServiceValidationError(
+                            f"Power mode '{zone['power_mode']}' not available for appliance with id {pnc_id}"
+                        )
+                else:
+                    mode_value = api_zone.power_mode
+                zones_payload.append({"zoneId": api_zone.id, "powerMode": mode_value})
+            command_payload = {"CustomPlay": {"persistentMapId": api_map.id, "zones": zones_payload}}
+            # Send the command to the appliance.
+            result = await appliance.send_command(command_payload)
+            _LOGGER.debug(f"Sent command '{command}' with data: {command_payload}, result: {result}")
+            return
+
         raise ServiceValidationError(f"Command '{command}' is not recognized for appliance with id {pnc_id}")
 
     async def set_vacuum_power_mode(self, pnc_id: str, mode: int):
