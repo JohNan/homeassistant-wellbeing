@@ -694,7 +694,7 @@ class WellbeingApiClient:
                     mode_value = next((k for k, v in PUREi9_MODES.items() if v == zone["mode"]), None)
                     if mode_value is None:
                         raise ServiceValidationError(
-                            f"Power mode '{zone['mode']}' not available for appliance with id {pnc_id}"
+                            f"Mode '{zone['mode']}' not available for appliance with id {pnc_id}"
                         )
                 else:
                     mode_value = api_zone.power_mode
