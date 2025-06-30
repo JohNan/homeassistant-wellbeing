@@ -609,7 +609,7 @@ class WellbeingApiClient:
             return
         data = {}
         match Model(appliance.type):
-            case Model.Robot700series.value:
+            case Model.Robot700series.value | Model.UltimateHome700.value | Model.VacuumHygienic700.value:
                 data = {"cleaningCommand": "startGlobalClean"}
             case Model.PUREi9.value:
                 data = {"CleaningCommand": "play"}
@@ -624,7 +624,7 @@ class WellbeingApiClient:
             return
         data = {}
         match Model(appliance.type):
-            case Model.Robot700series.value:
+            case Model.Robot700series.value | Model.UltimateHome700.value | Model.VacuumHygienic700.value:
                 data = {"cleaningCommand": "stopClean"}
             case Model.PUREi9.value:
                 data = {"CleaningCommand": "stop"}
@@ -639,7 +639,7 @@ class WellbeingApiClient:
             return
         data = {}
         match Model(appliance.type):
-            case Model.Robot700series.value:
+            case Model.Robot700series.value | Model.UltimateHome700.value | Model.VacuumHygienic700.value:
                 data = {"cleaningCommand": "pauseClean"}
             case Model.PUREi9.value:
                 data = {"CleaningCommand": "pause"}
@@ -654,7 +654,7 @@ class WellbeingApiClient:
             return
         data = {}
         match Model(appliance.type):
-            case Model.Robot700series.value:
+            case Model.Robot700series.value | Model.UltimateHome700.value | Model.VacuumHygienic700.value:
                 data = {"cleaningCommand": "startGoToCharger"}
             case Model.PUREi9.value:
                 data = {"CleaningCommand": "home"}
