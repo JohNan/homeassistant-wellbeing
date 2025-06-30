@@ -38,7 +38,7 @@ FILTER_TYPE = {
     0: "Filter",
 }
 
-PUREi9_POWER_MODES = {
+PUREi9_MODES = {
     1: "Quiet",
     2: "Smart",
     3: "Power",
@@ -48,7 +48,7 @@ PUREi9_POWER_MODES = {
 INTERACTIVE_MAP_ZONE_SCHEMA = vol.Schema(
     {
         vol.Required("name"): str,
-        vol.Optional("power_mode"): str,
+        vol.Optional("mode"): str,
     }
 )
 INTERACTIVE_MAP_SCHEMA = vol.Schema(
@@ -546,7 +546,7 @@ class Appliance:
     @property
     def vacuum_fan_speeds(self) -> dict[int, str]:
         if self.model == Model.PUREi9:
-            return PUREi9_POWER_MODES
+            return PUREi9_MODES
         return {}
 
 
@@ -690,11 +690,11 @@ class WellbeingApiClient:
                 api_zone = next((z for z in api_map.zones if z.name == zone["name"]), None)
                 if not api_zone:
                     raise ServiceValidationError(f"Zone '{zone['name']}' not found in map '{params['map']}'")
-                if "power_mode" in zone:
-                    mode_value = next((k for k, v in PUREi9_POWER_MODES.items() if v == zone["power_mode"]), None)
+                if "mode" in zone:
+                    mode_value = next((k for k, v in PUREi9_MODES.items() if v == zone["mode"]), None)
                     if mode_value is None:
                         raise ServiceValidationError(
-                            f"Power mode '{zone['power_mode']}' not available for appliance with id {pnc_id}"
+                            f"Power mode '{zone['mode']}' not available for appliance with id {pnc_id}"
                         )
                 else:
                     mode_value = api_zone.power_mode
