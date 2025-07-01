@@ -20,7 +20,7 @@ data:
       - Living room
       - Kitchen
 target:
-  entity_id: r2d2_robotstatus
+  entity_id: vacuum.r2d2_robotstatus
 ```
 
 #### Example 2
@@ -35,5 +35,5 @@ data:
       - name: Bedroom
         mode: quiet
 target:
-  entity_id: c3po_robotstatus
+  entity_id: vacuum.c3po_robotstatus
 ```
