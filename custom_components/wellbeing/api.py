@@ -38,17 +38,17 @@ FILTER_TYPE = {
     0: "Filter",
 }
 
+# Schemas for definition of an interactive map and its zones for the PUREi9 vacuum cleaner.
 PUREi9_MODES = {
-    1: "Quiet",
-    2: "Smart",
-    3: "Power",
+    "quiet": 1,
+    "smart": 2,
+    "power": 3,
 }
 
-# Schemas for definition of an interactive map and its zones for the PUREi9 vacuum cleaner.
 INTERACTIVE_MAP_ZONE_SCHEMA = vol.Schema(
     {
         vol.Required("name"): str,
-        vol.Optional("mode"): str,
+        vol.Optional("mode"): vol.In(list(PUREi9_MODES.keys())),
     }
 )
 INTERACTIVE_MAP_SCHEMA = vol.Schema(
@@ -543,12 +543,6 @@ class Appliance:
                 return 2, 6  # Do not include lowest value of 1 to make this mean empty (0%) battery
         return 0, 0
 
-    @property
-    def vacuum_fan_speeds(self) -> dict[int, str]:
-        if self.model == Model.PUREi9:
-            return PUREi9_MODES
-        return {}
-
 
 class Appliances:
     def __init__(self, appliances) -> None:
@@ -690,15 +684,9 @@ class WellbeingApiClient:
                 api_zone = next((z for z in api_map.zones if z.name == zone["name"]), None)
                 if not api_zone:
                     raise ServiceValidationError(f"Zone '{zone['name']}' not found in map '{params['map']}'")
-                if "mode" in zone:
-                    mode_value = next((k for k, v in PUREi9_MODES.items() if v == zone["mode"]), None)
-                    if mode_value is None:
-                        raise ServiceValidationError(
-                            f"Mode '{zone['mode']}' not available for appliance with id {pnc_id}"
-                        )
-                else:
-                    mode_value = api_zone.power_mode
-                zones_payload.append({"zoneId": api_zone.id, "powerMode": mode_value})
+                zones_payload.append(
+                    {"zoneId": api_zone.id, "powerMode": PUREi9_MODES.get(zone.get("mode"), api_zone.power_mode)}
+                )
             command_payload = {"CustomPlay": {"persistentMapId": api_map.id, "zones": zones_payload}}
             # Send the command to the appliance.
             result = await appliance.send_command(command_payload)
@@ -706,16 +694,6 @@ class WellbeingApiClient:
             return
 
         raise ServiceValidationError(f"Command '{command}' is not recognized for appliance with id {pnc_id}")
-
-    async def set_vacuum_power_mode(self, pnc_id: str, mode: int):
-        data = {"powerMode": mode}  # Not impemented by the Electrolux API. Disable FAN_SPEEDS until this is resolved.
-
-        appliance = self._api_appliances.get(pnc_id, None)
-        if appliance is None:
-            _LOGGER.error(f"Failed to set feature Power Mode to {mode} for appliance with id {pnc_id}")
-            return
-        result = await appliance.send_command(data)
-        _LOGGER.debug(f"Set Vacuum Power Mode: {result}")
 
     async def set_fan_speed(self, pnc_id: str, level: int):
         data = {"Fanspeed": level}
