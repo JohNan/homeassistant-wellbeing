@@ -39,7 +39,7 @@ FILTER_TYPE = {
 }
 
 # Schemas for definition of an interactive map and its zones for the PUREi9 vacuum cleaner.
-PUREI9_FAN_SPEED_MAP = {
+PUREI9_FAN_SPEEDS = {
     "quiet": 1,
     "smart": 2,
     "power": 3,
@@ -48,7 +48,7 @@ PUREI9_FAN_SPEED_MAP = {
 INTERACTIVE_MAP_ZONE_SCHEMA = vol.Schema(
     {
         vol.Required("zone"): str,
-        vol.Optional("fan_speed"): vol.In(list(PUREI9_FAN_SPEED_MAP.keys())),
+        vol.Optional("fan_speed"): vol.In(list(PUREI9_FAN_SPEEDS.keys())),
     }
 )
 
@@ -689,7 +689,7 @@ class WellbeingApiClient:
                 zones_payload.append(
                     {
                         "zoneId": api_zone.id,
-                        "powerMode": PUREI9_FAN_SPEED_MAP.get(zone.get("fan_speed"), api_zone.power_mode),
+                        "powerMode": PUREI9_FAN_SPEEDS.get(zone.get("fan_speed"), api_zone.power_mode),
                     }
                 )
             command_payload = {"CustomPlay": {"persistentMapId": api_map.id, "zones": zones_payload}}
