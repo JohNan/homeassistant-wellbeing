@@ -39,7 +39,7 @@ FILTER_TYPE = {
 }
 
 # Schemas for definition of an interactive map and its zones for the PUREi9 vacuum cleaner.
-PUREi9_FANS_SPEEDS = {
+PUREI9_FAN_SPEED_MAP = {
     "quiet": 1,
     "smart": 2,
     "power": 3,
@@ -48,23 +48,25 @@ PUREi9_FANS_SPEEDS = {
 INTERACTIVE_MAP_ZONE_SCHEMA = vol.Schema(
     {
         vol.Required("zone"): str,
-        vol.Optional("fan_speed"): vol.In(list(PUREi9_FANS_SPEEDS.keys())),
+        vol.Optional("fan_speed"): vol.In(list(PUREI9_FAN_SPEED_MAP.keys())),
     }
 )
+
+
+def validate_vacuum_zone_entry(value):
+    """Helper to validate a zone entry for INTERACTIVE_MAP_SCHEMA."""
+    """Converts a string to a dictionary with a single 'zone' key for briefer default params."""
+    if isinstance(value, str):
+        return {"zone": value}
+    if isinstance(value, dict):
+        return INTERACTIVE_MAP_ZONE_SCHEMA(value)
+    raise vol.Invalid("Zone entry must be a string or a dict with a 'zone' key")
+
+
 INTERACTIVE_MAP_SCHEMA = vol.Schema(
     {
         vol.Required("map"): str,
-        vol.Required("zones"): [
-            lambda value: (
-                {"zone": value}
-                if isinstance(value, str)
-                else (
-                    INTERACTIVE_MAP_ZONE_SCHEMA(value)
-                    if isinstance(value, dict)
-                    else (_ for _ in ()).throw(vol.Invalid("Zone entry must be a string or a dict with a 'zone' key"))
-                )
-            )
-        ],
+        vol.Required("zones"): [validate_vacuum_zone_entry],
     }
 )
 
@@ -687,7 +689,7 @@ class WellbeingApiClient:
                 zones_payload.append(
                     {
                         "zoneId": api_zone.id,
-                        "powerMode": PUREi9_FANS_SPEEDS.get(zone.get("fan_speed"), api_zone.power_mode),
+                        "powerMode": PUREI9_FAN_SPEED_MAP.get(zone.get("fan_speed"), api_zone.power_mode),
                     }
                 )
             command_payload = {"CustomPlay": {"persistentMapId": api_map.id, "zones": zones_payload}}
