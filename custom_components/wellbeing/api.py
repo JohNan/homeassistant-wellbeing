@@ -39,7 +39,7 @@ FILTER_TYPE = {
 }
 
 # Schemas for definition of an interactive map and its zones for the PUREi9 vacuum cleaner.
-PUREi9_MODES = {
+PUREi9_FANS_SPEEDS = {
     "quiet": 1,
     "smart": 2,
     "power": 3,
@@ -47,8 +47,8 @@ PUREi9_MODES = {
 
 INTERACTIVE_MAP_ZONE_SCHEMA = vol.Schema(
     {
-        vol.Required("name"): str,
-        vol.Optional("mode"): vol.In(list(PUREi9_MODES.keys())),
+        vol.Required("zone"): str,
+        vol.Optional("fan_speed"): vol.In(list(PUREi9_FANS_SPEEDS.keys())),
     }
 )
 INTERACTIVE_MAP_SCHEMA = vol.Schema(
@@ -56,12 +56,12 @@ INTERACTIVE_MAP_SCHEMA = vol.Schema(
         vol.Required("map"): str,
         vol.Required("zones"): [
             lambda value: (
-                {"name": value}
+                {"zone": value}
                 if isinstance(value, str)
                 else (
                     INTERACTIVE_MAP_ZONE_SCHEMA(value)
                     if isinstance(value, dict)
-                    else (_ for _ in ()).throw(vol.Invalid("Zone entry must be a string or a dict with a 'name' key"))
+                    else (_ for _ in ()).throw(vol.Invalid("Zone entry must be a string or a dict with a 'zone' key"))
                 )
             )
         ],
@@ -681,11 +681,14 @@ class WellbeingApiClient:
                 raise ServiceValidationError(f"Map '{params['map']}' not found for appliance with id {pnc_id}")
             zones_payload = []
             for zone in params["zones"]:
-                api_zone = next((z for z in api_map.zones if z.name == zone["name"]), None)
+                api_zone = next((z for z in api_map.zones if z.name == zone["zone"]), None)
                 if not api_zone:
-                    raise ServiceValidationError(f"Zone '{zone['name']}' not found in map '{params['map']}'")
+                    raise ServiceValidationError(f"Zone '{zone['zone']}' not found in map '{params['map']}'")
                 zones_payload.append(
-                    {"zoneId": api_zone.id, "powerMode": PUREi9_MODES.get(zone.get("mode"), api_zone.power_mode)}
+                    {
+                        "zoneId": api_zone.id,
+                        "powerMode": PUREi9_FANS_SPEEDS.get(zone.get("fan_speed"), api_zone.power_mode),
+                    }
                 )
             command_payload = {"CustomPlay": {"persistentMapId": api_map.id, "zones": zones_payload}}
             # Send the command to the appliance.
