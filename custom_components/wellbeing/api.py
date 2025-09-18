@@ -704,18 +704,14 @@ class WellbeingApiClient:
         if appliance is None:
             _LOGGER.error(f"Failed to set fan speed for appliance with id {pnc_id}")
             return
-        # data = {}
         match Model(appliance.type):
             case Model.Robot700series.value | Model.VacuumHygienic700.value:
-                # data = {"vacuumMode": FAN_SPEEDS_700SERIES.get(speed)}
                 result = await appliance.send_command({"vacuumMode": FAN_SPEEDS_700SERIES.get(speed)})
             case Model.PUREi9.value:
-                # data = {"powerMode": FAN_SPEEDS_PUREI9.get(speed)}
                 result = await appliance.send_command({"powerMode": FAN_SPEEDS_PUREI9.get(speed)})
             case _:
                 _LOGGER.error(f"Failed to set fan speed for unsupported appliance model {appliance.type}")
                 return
-        # result = await appliance.send_command(data)
         _LOGGER.debug(f"Set Vacuum Fan Speed: {result}")
 
     async def vacuum_send_command(self, pnc_id: str, command: str, params: dict | None = None):
