@@ -39,7 +39,7 @@ FILTER_TYPE = {
 }
 
 # Schemas for definition of an interactive map and its zones for the PUREi9 vacuum cleaner.
-PUREI9_FAN_SPEEDS = {
+FAN_SPEEDS_PUREI9 = {
     "quiet": 1,
     "smart": 2,
     "power": 3,
@@ -48,7 +48,7 @@ PUREI9_FAN_SPEEDS = {
 INTERACTIVE_MAP_ZONE_SCHEMA = vol.Schema(
     {
         vol.Required("zone"): str,
-        vol.Optional("fan_speed"): vol.In(list(PUREI9_FAN_SPEEDS.keys())),
+        vol.Optional("fan_speed"): vol.In(list(FAN_SPEEDS_PUREI9.keys())),
     }
 )
 
@@ -69,6 +69,13 @@ INTERACTIVE_MAP_SCHEMA = vol.Schema(
         vol.Required("zones"): [validate_vacuum_zone_entry],
     }
 )
+
+FAN_SPEEDS_700SERIES = {
+    "quiet": "quiet",
+    "eco": "energySaving",
+    "standard": "standard",
+    "power": "powerful",
+}
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
@@ -491,6 +498,8 @@ class Appliance:
             self.louver_swing_mode = LouverSwingMode(data.get("LouverSwing"))
         if "powerMode" in data:
             self.power_mode = data.get("powerMode")
+        if "vacuumMode" in data:
+            self.vacuum_mode = data.get("vacuumMode")
         if "batteryStatus" in data:
             self.battery_status = data.get("batteryStatus")
 
@@ -544,6 +553,34 @@ class Appliance:
             case Model.PUREi9.value:
                 return 2, 6  # Do not include lowest value of 1 to make this mean empty (0%) battery
         return 0, 0
+
+    @property
+    def vacuum_fan_speed_list(self) -> list[str]:
+        """Return the available fan speeds for the vacuum cleaner."""
+        match Model(self.model):
+            case Model.Robot700series.value | Model.VacuumHygienic700.value:
+                return list(FAN_SPEEDS_700SERIES.keys())
+            case Model.PUREi9.value:
+                return list(FAN_SPEEDS_PUREI9.keys())
+        return []
+
+    @property
+    def vacuum_fan_speed(self) -> str | None:
+        """Return the current fan speed of the vacuum cleaner."""
+        match Model(self.model):
+            case Model.Robot700series.value | Model.VacuumHygienic700.value:
+                return next((speed for speed, mode in FAN_SPEEDS_700SERIES.items() if mode == self.vacuum_mode), None)
+            case Model.PUREi9.value:
+                return next((speed for speed, mode in FAN_SPEEDS_PUREI9.items() if mode == self.power_mode), None)
+        return None
+
+    def vacuum_set_fan_speed(self, speed: str) -> None:
+        """Set the current fan speed of the vacuum cleaner."""
+        match Model(self.model):
+            case Model.Robot700series.value | Model.VacuumHygienic700.value:
+                self.vacuum_mode = FAN_SPEEDS_700SERIES.get(speed, self.vacuum_mode)
+            case Model.PUREi9.value:
+                self.power_mode = FAN_SPEEDS_PUREI9.get(speed, self.power_mode)
 
 
 class Appliances:
@@ -661,6 +698,21 @@ class WellbeingApiClient:
         result = await appliance.send_command(data)
         _LOGGER.debug(f"Vacuum return to base command: {result}")
 
+    async def vacuum_set_fan_speed(self, pnc_id: str, speed: str):
+        """Set the fan speed of a vacuum cleaner."""
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            _LOGGER.error(f"Failed to set fan speed for appliance with id {pnc_id}")
+            return
+        data = dict[str, str | int | None]()
+        match Model(appliance.type):
+            case Model.Robot700series.value | Model.VacuumHygienic700.value:
+                data = {"vacuumMode": FAN_SPEEDS_700SERIES.get(speed)}
+            case Model.PUREi9.value:
+                data = {"powerMode": FAN_SPEEDS_PUREI9.get(speed)}
+        result = await appliance.send_command(data)
+        _LOGGER.debug(f"Set Fan Speed command: {result}")
+
     async def vacuum_send_command(self, pnc_id: str, command: str, params: dict | None = None):
         """Send a command to the vacuum cleaner. Currently not used for any specific command."""
 
@@ -689,7 +741,7 @@ class WellbeingApiClient:
                 zones_payload.append(
                     {
                         "zoneId": api_zone.id,
-                        "powerMode": PUREI9_FAN_SPEEDS.get(zone.get("fan_speed"), api_zone.power_mode),
+                        "powerMode": FAN_SPEEDS_PUREI9.get(zone.get("fan_speed"), api_zone.power_mode),
                     }
                 )
             command_payload = {"CustomPlay": {"persistentMapId": api_map.id, "zones": zones_payload}}
