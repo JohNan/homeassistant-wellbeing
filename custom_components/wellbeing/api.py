@@ -240,7 +240,7 @@ class Appliance:
             ApplianceBinary(name="Clean Air", attr="cleanAirMode"),
             ApplianceBinary(name="Vertical Swing", attr="verticalSwing"),
             ApplianceBinary(name="Water Tank Full", attr="waterTankFull"),
-            ApplianceBinary(name="Sppliance State", attr="applianceState"),
+            ApplianceBinary(name="Appliance State", attr="applianceState"),
             ApplianceBinary(name="UI Lock", attr="uiLockMode", device_class=BinarySensorDeviceClass.LOCK),
             ApplianceSensor(
                 name="Target Humidity",
