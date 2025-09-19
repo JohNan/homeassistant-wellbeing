@@ -19,6 +19,7 @@ SUPPORTED_FEATURES = (
     | VacuumEntityFeature.PAUSE
     | VacuumEntityFeature.RETURN_HOME
     | VacuumEntityFeature.BATTERY
+    | VacuumEntityFeature.FAN_SPEED
     | VacuumEntityFeature.SEND_COMMAND
 )
 
@@ -119,6 +120,16 @@ class WellbeingVacuum(WellbeingEntity, StateVacuumEntity):
         else:
             return "mdi:battery-unknown"
 
+    @property
+    def fan_speed(self):
+        """Return the current fan speed of the vacuum."""
+        return self.get_appliance.vacuum_fan_speed
+
+    @property
+    def fan_speed_list(self):
+        """Return the list of available fan speeds."""
+        return self.get_appliance.vacuum_fan_speed_list
+
     async def async_start(self):
         """Start the vacuum cleaner."""
         await self.api.vacuum_start(self.pnc_id)
@@ -134,6 +145,14 @@ class WellbeingVacuum(WellbeingEntity, StateVacuumEntity):
     async def async_return_to_base(self):
         """Return the vacuum cleaner to its base."""
         await self.api.vacuum_return_to_base(self.pnc_id)
+
+    async def async_set_fan_speed(self, fan_speed: str) -> None:
+        """Set the fan speed of the vacuum cleaner."""
+        await self.api.vacuum_set_fan_speed(self.pnc_id, fan_speed)
+        self.get_appliance.vacuum_set_fan_speed(
+            fan_speed
+        )  # Optimistically update the state before the next coordinator refresh
+        self.async_write_ha_state()
 
     async def async_send_command(self, command: str, params: dict[str, Any] | None = None, **kwargs: Any) -> None:
         """Send a custom command to the vacuum cleaner."""
