@@ -3,5 +3,5 @@
   "hacs": "1.6.0",
   "homeassistant": "2025.1.0",
   "zip_release": true,
-  “filename": "wellbeing.zip"
+  "filename": "wellbeing.zip"
 }
