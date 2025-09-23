@@ -597,6 +597,9 @@ class WellbeingApiClient:
         """Sample API Client."""
         self._api_appliances: dict[str, ApiAppliance] = {}
         self._hub = hub
+        self._model_mapping = {
+            "DH": "UltimateHome 700",  # Map dehumidifier type to proper model name
+        }
 
     async def async_get_appliances(self) -> Appliances:
         """Get data from the API."""
@@ -608,7 +611,7 @@ class WellbeingApiClient:
         for appliance in (appliance for appliance in appliances):
             await appliance.async_update()
 
-            model_name = appliance.type
+            model_name = self._model_mapping.get(appliance.type, appliance.type)
             appliance_id = appliance.id
             appliance_name = appliance.name
 
