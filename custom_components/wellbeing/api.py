@@ -1,5 +1,6 @@
 """Sample API Client."""
 
+import asyncio
 import logging
 from enum import Enum
 
@@ -597,15 +598,22 @@ class WellbeingApiClient:
         """Sample API Client."""
         self._api_appliances: dict[str, ApiAppliance] = {}
         self._hub = hub
+        self._load_lock = asyncio.Lock()
 
+    async def _ensure_loaded(self) -> None:
+        if self._api_appliances:
+            return
+        async with self._load_lock:
+            if self._api_appliances:
+                return
+            appliances: list[ApiAppliance] = await self._hub.async_get_appliances()
+            self._api_appliances = {appliance.id: appliance for appliance in appliances}
     async def async_get_appliances(self) -> Appliances:
         """Get data from the API."""
-
-        appliances: list[ApiAppliance] = await self._hub.async_get_appliances()
-        self._api_appliances = {appliance.id: appliance for appliance in appliances}
-
+        
+        await self._ensure_loaded()
         found_appliances = {}
-        for appliance in (appliance for appliance in appliances):
+        for appliance in (appliance for appliance in self._api_appliances.values()):
             await appliance.async_update()
 
             model_name = appliance.type
