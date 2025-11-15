@@ -41,6 +41,11 @@ FILTER_TYPE = {
 
 # Schemas for definition of an interactive map and its zones for the PUREi9 vacuum cleaner.
 FAN_SPEEDS_PUREI9 = {
+    "eco": True,
+    "power": False,
+}
+
+FAN_SPEEDS_PUREI92 = {
     "quiet": 1,
     "smart": 2,
     "power": 3,
@@ -49,7 +54,7 @@ FAN_SPEEDS_PUREI9 = {
 INTERACTIVE_MAP_ZONE_SCHEMA = vol.Schema(
     {
         vol.Required("zone"): str,
-        vol.Optional("fan_speed"): vol.In(list(FAN_SPEEDS_PUREI9.keys())),
+        vol.Optional("fan_speed"): vol.In(list(FAN_SPEEDS_PUREI92.keys())),
     }
 )
 
@@ -192,6 +197,9 @@ class Appliance:
     entities: list
     capabilities: dict
     model: Model
+    power_mode: int | None
+    eco_mode: bool | None
+    vacuum_mode: str | None
 
     def __init__(self, name, pnc_id, model) -> None:
         self.model = Model(model)
@@ -562,7 +570,11 @@ class Appliance:
             case Model.Robot700series.value | Model.VacuumHygienic700.value:
                 return list(FAN_SPEEDS_700SERIES.keys())
             case Model.PUREi9.value:
-                return list(FAN_SPEEDS_PUREI9.keys())
+                if hasattr(self, "power_mode"):
+                    return list(FAN_SPEEDS_PUREI92.keys())
+                if hasattr(self, "eco_mode"):
+                    return list(FAN_SPEEDS_PUREI9.keys())
+                return ["power"]
         return []
 
     @property
@@ -572,7 +584,11 @@ class Appliance:
             case Model.Robot700series.value | Model.VacuumHygienic700.value:
                 return next((speed for speed, mode in FAN_SPEEDS_700SERIES.items() if mode == self.vacuum_mode), None)
             case Model.PUREi9.value:
-                return next((speed for speed, mode in FAN_SPEEDS_PUREI9.items() if mode == self.power_mode), None)
+                if hasattr(self, "power_mode"):
+                    return next((speed for speed, mode in FAN_SPEEDS_PUREI92.items() if mode == self.power_mode), None)
+                if hasattr(self, "eco_mode"):
+                    return next((speed for speed, mode in FAN_SPEEDS_PUREI9.items() if mode == self.eco_mode), None)
+                return "power"
         return None
 
     def vacuum_set_fan_speed(self, speed: str) -> None:
@@ -581,7 +597,10 @@ class Appliance:
             case Model.Robot700series.value | Model.VacuumHygienic700.value:
                 self.vacuum_mode = FAN_SPEEDS_700SERIES.get(speed, self.vacuum_mode)
             case Model.PUREi9.value:
-                self.power_mode = FAN_SPEEDS_PUREI9.get(speed, self.power_mode)
+                if hasattr(self, "power_mode"):
+                    self.power_mode = FAN_SPEEDS_PUREI92.get(speed, self.power_mode)
+                if hasattr(self, "eco_mode"):
+                    self.eco_mode = FAN_SPEEDS_PUREI9.get(speed, self.eco_mode)
 
 
 class Appliances:
@@ -608,9 +627,10 @@ class WellbeingApiClient:
                 return
             appliances: list[ApiAppliance] = await self._hub.async_get_appliances()
             self._api_appliances = {appliance.id: appliance for appliance in appliances}
+
     async def async_get_appliances(self) -> Appliances:
         """Get data from the API."""
-        
+
         await self._ensure_loaded()
         found_appliances = {}
         for appliance in (appliance for appliance in self._api_appliances.values()):
@@ -706,20 +726,24 @@ class WellbeingApiClient:
         result = await appliance.send_command(data)
         _LOGGER.debug(f"Vacuum return to base command: {result}")
 
-    async def vacuum_set_fan_speed(self, pnc_id: str, speed: str):
+    async def vacuum_set_fan_speed(self, pnc_id: str, appliance, speed: str):
         """Set the fan speed of a vacuum cleaner."""
-        appliance = self._api_appliances.get(pnc_id, None)
-        if appliance is None:
+        api_appliance = self._api_appliances.get(pnc_id, None)
+        if api_appliance is None:
             _LOGGER.error(f"Failed to set fan speed for appliance with id {pnc_id}")
             return
         data = dict[str, str | int | None]()
-        match Model(appliance.type):
+        match Model(api_appliance.type):
             case Model.Robot700series.value | Model.VacuumHygienic700.value:
                 data = {"vacuumMode": FAN_SPEEDS_700SERIES.get(speed)}
             case Model.PUREi9.value:
-                data = {"powerMode": FAN_SPEEDS_PUREI9.get(speed)}
-        result = await appliance.send_command(data)
+                if hasattr(appliance, "power_mode"):
+                    data = {"powerMode": FAN_SPEEDS_PUREI92.get(speed)}
+                if hasattr(appliance, "eco_mode"):
+                    data = {"ecoMode": FAN_SPEEDS_PUREI9.get(speed)}
+        result = await api_appliance.send_command(data)
         _LOGGER.debug(f"Set Fan Speed command: {result}")
+        appliance.vacuum_set_fan_speed(speed)
 
     async def vacuum_send_command(self, pnc_id: str, command: str, params: dict | None = None):
         """Send a command to the vacuum cleaner. Currently not used for any specific command."""
@@ -749,7 +773,7 @@ class WellbeingApiClient:
                 zones_payload.append(
                     {
                         "zoneId": api_zone.id,
-                        "powerMode": FAN_SPEEDS_PUREI9.get(zone.get("fan_speed"), api_zone.power_mode),
+                        "powerMode": FAN_SPEEDS_PUREI92.get(zone.get("fan_speed"), api_zone.power_mode),
                     }
                 )
             command_payload = {"CustomPlay": {"persistentMapId": api_map.id, "zones": zones_payload}}

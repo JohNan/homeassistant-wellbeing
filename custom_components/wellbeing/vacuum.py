@@ -148,11 +148,8 @@ class WellbeingVacuum(WellbeingEntity, StateVacuumEntity):
 
     async def async_set_fan_speed(self, fan_speed: str) -> None:
         """Set the fan speed of the vacuum cleaner."""
-        await self.api.vacuum_set_fan_speed(self.pnc_id, fan_speed)
-        self.get_appliance.vacuum_set_fan_speed(
-            fan_speed
-        )  # Optimistically update the state before the next coordinator refresh
-        self.async_write_ha_state()
+        await self.api.vacuum_set_fan_speed(self.pnc_id, self.get_appliance, fan_speed)
+        self.async_write_ha_state()  # Optimistically update the state before the next coordinator refresh
 
     async def async_send_command(self, command: str, params: dict[str, Any] | None = None, **kwargs: Any) -> None:
         """Send a custom command to the vacuum cleaner."""
