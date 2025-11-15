@@ -197,9 +197,6 @@ class Appliance:
     entities: list
     capabilities: dict
     model: Model
-    power_mode: int | None
-    eco_mode: bool | None
-    vacuum_mode: str | None
 
     def __init__(self, name, pnc_id, model) -> None:
         self.model = Model(model)
@@ -507,6 +504,8 @@ class Appliance:
             self.louver_swing_mode = LouverSwingMode(data.get("LouverSwing"))
         if "powerMode" in data:
             self.power_mode = data.get("powerMode")
+        if "ecoMode" in data:
+            self.eco_mode = data.get("ecoMode")
         if "vacuumMode" in data:
             self.vacuum_mode = data.get("vacuumMode")
         if "batteryStatus" in data:
