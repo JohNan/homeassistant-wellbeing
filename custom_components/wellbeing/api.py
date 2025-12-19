@@ -739,11 +739,7 @@ class WellbeingApiClient:
                 if hasattr(appliance, "power_mode"):
                     data = {"powerMode": FAN_SPEEDS_PUREI92.get(speed)}
                 if hasattr(appliance, "eco_mode"):
-                    # data = {"ecoMode": FAN_SPEEDS_PUREI9.get(speed)}
-                    if speed == "eco":
-                        data = {"powerMode": 1}
-                    else:
-                        data = {"powerMode": 3}
+                    data = {"ecoMode": FAN_SPEEDS_PUREI9.get(speed)}
         result = await api_appliance.send_command(data)
         _LOGGER.debug(f"Set Fan Speed command: {result}")
         appliance.vacuum_set_fan_speed(speed)
