@@ -324,7 +324,16 @@ class Appliance:
             ),
         ]
 
-        purei9_entities = [
+        vacuum_common = [
+            ApplianceSensor(
+                name="Battery",
+                attr="batteryStatus",
+                device_class=SensorDeviceClass.BATTERY,
+                unit=PERCENTAGE,
+            ),
+        ]
+
+        vacuum_purei9_entities = [
             ApplianceVacuum(
                 name=data.get("applianceName", "Vacuum"),
                 attr="robotStatus",
@@ -468,7 +477,8 @@ class Appliance:
             + a7_entities
             + pure500_entities
             + pm700_entities
-            + purei9_entities
+            + vacuum_common
+            + vacuum_purei9_entities
             + ultimate_home_700_entities
             + vacuum_700_series_entities
             + vacuum_hygienic_700_entities
@@ -508,8 +518,6 @@ class Appliance:
             self.eco_mode = data.get("ecoMode")
         if "vacuumMode" in data:
             self.vacuum_mode = data.get("vacuumMode")
-        if "batteryStatus" in data:
-            self.battery_status = data.get("batteryStatus")
 
         self.capabilities = capabilities
         self.entities = [entity.setup(data) for entity in Appliance._create_entities(data) if entity.attr in data]
@@ -560,7 +568,7 @@ class Appliance:
                 return 1, 100
             case Model.PUREi9.value:
                 return 2, 6  # Do not include lowest value of 1 to make this mean empty (0%) battery
-        return 0, 0
+        return 1, 100  # Default battery range
 
     @property
     def vacuum_fan_speed_list(self) -> list[str]:

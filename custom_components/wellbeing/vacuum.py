@@ -4,7 +4,6 @@ import logging
 
 from homeassistant.components.vacuum import StateVacuumEntity, VacuumActivity, VacuumEntityFeature
 from homeassistant.const import Platform
-from homeassistant.util.percentage import ranged_value_to_percentage
 
 from . import WellbeingDataUpdateCoordinator
 from .const import DOMAIN
@@ -18,7 +17,6 @@ SUPPORTED_FEATURES = (
     | VacuumEntityFeature.STOP
     | VacuumEntityFeature.PAUSE
     | VacuumEntityFeature.RETURN_HOME
-    | VacuumEntityFeature.BATTERY
     | VacuumEntityFeature.FAN_SPEED
     | VacuumEntityFeature.SEND_COMMAND
 )
@@ -44,8 +42,6 @@ VACUUM_ACTIVITIES = {
     "paused": VacuumActivity.PAUSED,  # robot700series paused
     "sleeping": VacuumActivity.DOCKED,  # robot700series sleeping
 }
-
-VACUUM_CHARGING_STATES = [9, "idle"]
 
 
 async def async_setup_entry(hass, entry, async_add_devices):
@@ -79,10 +75,6 @@ class WellbeingVacuum(WellbeingEntity, StateVacuumEntity):
         self.entity_model = self.get_appliance.model
 
     @property
-    def _battery_range(self) -> tuple[int, int]:
-        return self.get_appliance.battery_range
-
-    @property
     def supported_features(self) -> int:
         return SUPPORTED_FEATURES
 
@@ -90,35 +82,6 @@ class WellbeingVacuum(WellbeingEntity, StateVacuumEntity):
     def activity(self):
         """Return the current vacuum activity."""
         return VACUUM_ACTIVITIES.get(self.get_entity.state, VacuumActivity.ERROR)
-
-    @property
-    def battery_level(self):
-        """Return the battery level of the vacuum."""
-        return ranged_value_to_percentage(self._battery_range, self.get_appliance.battery_status)
-
-    @property
-    def battery_icon(self):
-        """Return the battery icon of the vacuum based on the battery level."""
-        level = self.battery_level
-
-        charging = self.get_entity.state in VACUUM_CHARGING_STATES
-
-        level = 10 * round(level / 10)  # Round level to nearest 10 for icon selection
-
-        # Special cases given available icons
-        if level == 100 and charging:
-            return "mdi:battery-charging-100"
-        if level == 100 and not charging:
-            return "mdi:battery"
-        if level == 0 and charging:
-            return "mdi:battery-charging-outline"
-        if level == 0 and not charging:
-            return "mdi:battery-alert-variant-outline"
-        # General case
-        if level > 0 and level < 100:
-            return "mdi:battery-" + ("charging-" if charging else "") + f"{level}"
-        else:
-            return "mdi:battery-unknown"
 
     @property
     def fan_speed(self):

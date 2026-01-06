@@ -2,7 +2,8 @@
 
 from typing import cast
 
-from homeassistant.components.sensor import SensorEntity, SensorStateClass
+from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
+from homeassistant.util.percentage import ranged_value_to_percentage
 from homeassistant.const import Platform
 
 from .api import ApplianceSensor
@@ -32,6 +33,11 @@ class WellbeingSensor(WellbeingEntity, SensorEntity):
     @property
     def native_value(self):
         """Return the state of the sensor."""
+        if self.device_class == SensorDeviceClass.BATTERY:
+            return ranged_value_to_percentage(
+                self.get_appliance.battery_range,
+                self.get_entity.state,
+            )
         return self.get_entity.state
 
     @property
