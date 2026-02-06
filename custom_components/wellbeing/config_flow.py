@@ -110,6 +110,9 @@ class WellbeingFlowHandler(ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
                     vol.Required(CONF_REFRESH_TOKEN): str,
                 }
             ),
+            description_placeholders={
+                "docs_url": "https://github.com/JohNan/homeassistant-wellbeing"
+            },
             errors=self._errors,
         )
 

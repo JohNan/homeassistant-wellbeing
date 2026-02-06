@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "description": "Jeśli potrzebujesz pomocy z konfiguracją zajrzyj tutaj: https://github.com/JohNan/homeassistant-wellbeing",
+        "description": "Jeśli potrzebujesz pomocy z konfiguracją zajrzyj tutaj: [{docs_url}]({docs_url})",
         "data": {
           "api_key": "Klucz API",
           "refresh_token": "Token Odświeżania (Refresh Token)",

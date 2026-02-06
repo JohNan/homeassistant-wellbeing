@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "description": "Hvis du trenger hjep til konfigurasjon ta en titt her: https://github.com/JohNan/homeassistant-wellbeing",
+        "description": "Hvis du trenger hjep til konfigurasjon ta en titt her: [{docs_url}]({docs_url})",
         "data": {
           "username": "Brukernavn",
           "password": "Passord"
