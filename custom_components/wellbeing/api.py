@@ -759,13 +759,23 @@ class WellbeingApiClient:
         if appliance is None:
             _LOGGER.error(f"Failed to get segments for appliance with id {pnc_id}")
             return []
+
+        if appliance.type == Model.Robot700series.value or appliance.type == Model.VacuumHygienic700.value:
+            api_maps = await appliance.async_get_memory_maps()
+            api_map = api_maps[0] if api_maps else None  # Default to the first map
+            if not api_map:
+                _LOGGER.error(f"No memory maps found for appliance with id {pnc_id}")
+                return []
+            return [Segment(id=room.id, name=room.name) for room in api_map.rooms]
+
         if appliance.type == Model.PUREi9.value:
             api_maps = await appliance.async_get_interactive_maps()
             api_map = api_maps[0] if api_maps else None  # Default to the first map
             if not api_map:
                 _LOGGER.error(f"No interactive maps found for appliance with id {pnc_id}")
                 return []
-            return [Segment(id=zone.id, name=zone.name) for zone in api_map.zones]
+            return [Segment(id=zone.id, name=zone.name) for zone in api_map.zones if zone.type == "clean"]
+
         return []
 
     async def vacuum_clean_segments(self, pnc_id: str, segment_ids: list[str]) -> None:
@@ -773,6 +783,32 @@ class WellbeingApiClient:
         appliance = self._api_appliances.get(pnc_id, None)
         if appliance is None:
             _LOGGER.error(f"Failed to clean segments for appliance with id {pnc_id}")
+            return
+
+        if appliance.type == Model.Robot700series.value or appliance.type == Model.VacuumHygienic700.value:
+            api_maps = await appliance.async_get_memory_maps()
+            api_map = api_maps[0] if api_maps else None
+            if not api_map:
+                _LOGGER.error(f"No memory maps found for appliance with id {pnc_id}")
+                return
+            rooms_payload = [
+                {
+                    "roomId": segment_id,
+                    "sweepMode": 0,
+                    "vacuumMode": "standard",
+                    "waterPumpRate": "off",
+                    "numberOfCleaningRepetitions": 1,
+                }
+                for segment_id in segment_ids
+            ]
+            command_payload = {
+                "mapCommand": "selectRoomsClean",
+                "mapId": api_map.id,
+                "type": 1,
+                "roomInfo": rooms_payload,
+            }
+            result = await appliance.send_command(command_payload)
+            _LOGGER.debug(f"Sent clean segments command with data: {command_payload}, result: {result}")
             return
 
         if appliance.type == Model.PUREi9.value:
@@ -793,6 +829,7 @@ class WellbeingApiClient:
             command_payload = {"CustomPlay": {"persistentMapId": api_map.id, "zones": zones_payload}}
             result = await appliance.send_command(command_payload)
             _LOGGER.debug(f"Sent clean segments command with data: {command_payload}, result: {result}")
+            return
 
     async def vacuum_send_command(self, pnc_id: str, command: str, params: dict | None = None):
         """Send a command to the vacuum cleaner. Currently not used for any specific command."""
