@@ -17,6 +17,7 @@ from homeassistant.const import (
     EntityCategory,
 )
 from homeassistant.helpers.typing import UNDEFINED
+from homeassistant.components.vacuum import Segment
 from pyelectroluxgroup.api import ElectroluxHubAPI
 from pyelectroluxgroup.appliance import Appliance as ApiAppliance
 import voluptuous as vol
@@ -751,6 +752,47 @@ class WellbeingApiClient:
         result = await api_appliance.send_command(data)
         _LOGGER.debug(f"Set Fan Speed command: {result}")
         appliance.vacuum_set_fan_speed(speed)
+
+    async def vacuum_get_segments(self, pnc_id: str) -> list[Segment]:
+        """Get the segments (zones or rooms) of a vacuum cleaner."""
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            _LOGGER.error(f"Failed to get segments for appliance with id {pnc_id}")
+            return []
+        if appliance.type == Model.PUREi9.value:
+            api_maps = await appliance.async_get_interactive_maps()
+            api_map = api_maps[0] if api_maps else None  # Default to the first map
+            if not api_map:
+                _LOGGER.error(f"No interactive maps found for appliance with id {pnc_id}")
+                return []
+            return [Segment(id=zone.id, name=zone.name) for zone in api_map.zones]
+        return []
+
+    async def vacuum_clean_segments(self, pnc_id: str, segment_ids: list[str]) -> None:
+        """Clean the segments (zones or rooms) of a vacuum cleaner."""
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            _LOGGER.error(f"Failed to clean segments for appliance with id {pnc_id}")
+            return
+
+        if appliance.type == Model.PUREi9.value:
+            api_maps = await appliance.async_get_interactive_maps()
+            api_map = api_maps[0] if api_maps else None  # Default to the first map
+            if not api_map:
+                _LOGGER.error(f"No interactive maps found for appliance with id {pnc_id}")
+                return
+            zone_power_mode = {zone.id: zone.power_mode for zone in api_map.zones}
+            default_power_mode = FAN_SPEEDS_PUREI92.get("smart", 2)
+            zones_payload = [
+                {
+                    "zoneId": segment_id,
+                    "powerMode": zone_power_mode.get(segment_id, default_power_mode),
+                }
+                for segment_id in segment_ids
+            ]
+            command_payload = {"CustomPlay": {"persistentMapId": api_map.id, "zones": zones_payload}}
+            result = await appliance.send_command(command_payload)
+            _LOGGER.debug(f"Sent clean segments command with data: {command_payload}, result: {result}")
 
     async def vacuum_send_command(self, pnc_id: str, command: str, params: dict | None = None):
         """Send a command to the vacuum cleaner. Currently not used for any specific command."""

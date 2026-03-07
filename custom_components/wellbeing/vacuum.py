@@ -2,7 +2,7 @@
 
 import logging
 
-from homeassistant.components.vacuum import StateVacuumEntity, VacuumActivity, VacuumEntityFeature
+from homeassistant.components.vacuum import StateVacuumEntity, VacuumActivity, VacuumEntityFeature, Segment
 from homeassistant.const import Platform
 
 from . import WellbeingDataUpdateCoordinator
@@ -19,6 +19,7 @@ SUPPORTED_FEATURES = (
     | VacuumEntityFeature.RETURN_HOME
     | VacuumEntityFeature.FAN_SPEED
     | VacuumEntityFeature.SEND_COMMAND
+    | VacuumEntityFeature.CLEAN_AREA
 )
 
 VACUUM_ACTIVITIES = {
@@ -113,6 +114,14 @@ class WellbeingVacuum(WellbeingEntity, StateVacuumEntity):
         """Set the fan speed of the vacuum cleaner."""
         await self.api.vacuum_set_fan_speed(self.pnc_id, self.get_appliance, fan_speed)
         self.async_write_ha_state()  # Optimistically update the state before the next coordinator refresh
+
+    async def async_get_segments(self) -> list[Segment]:
+        """Get the segments that can be cleaned."""
+        return await self.api.vacuum_get_segments(self.pnc_id)
+
+    async def async_clean_segments(self, segment_ids: list[str], **kwargs: Any) -> None:
+        """Perform an area clean."""
+        await self.api.vacuum_clean_segments(self.pnc_id, segment_ids)
 
     async def async_send_command(self, command: str, params: dict[str, Any] | None = None, **kwargs: Any) -> None:
         """Send a custom command to the vacuum cleaner."""
