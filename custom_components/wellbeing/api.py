@@ -17,9 +17,9 @@ from homeassistant.const import (
     EntityCategory,
 )
 from homeassistant.helpers.typing import UNDEFINED
+from homeassistant.components.vacuum import Segment
 from pyelectroluxgroup.api import ElectroluxHubAPI
 from pyelectroluxgroup.appliance import Appliance as ApiAppliance
-from pyelectroluxgroup.map import MemoryMap
 import voluptuous as vol
 
 FILTER_TYPE = {
@@ -85,7 +85,6 @@ FAN_SPEEDS_700SERIES = {
 }
 
 WATER_PUMP_RATES_700SERIES = ["off", "low", "medium", "high"]
-
 
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
@@ -757,6 +756,84 @@ class WellbeingApiClient:
         _LOGGER.debug(f"Set Fan Speed command: {result}")
         appliance.vacuum_set_fan_speed(speed)
 
+    async def vacuum_get_segments(self, pnc_id: str) -> list[Segment]:
+        """Get the segments (zones or rooms) of a vacuum cleaner."""
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            _LOGGER.error(f"Failed to get segments for appliance with id {pnc_id}")
+            return []
+
+        if appliance.type == Model.Robot700series.value or appliance.type == Model.VacuumHygienic700.value:
+            api_maps = await appliance.async_get_memory_maps()
+            api_map = api_maps[0] if api_maps else None  # Default to the first map
+            if not api_map:
+                _LOGGER.error(f"No memory maps found for appliance with id {pnc_id}")
+                return []
+            return [Segment(id=room.id, name=room.name) for room in api_map.rooms]
+
+        if appliance.type == Model.PUREi9.value:
+            api_maps = await appliance.async_get_interactive_maps()
+            api_map = api_maps[0] if api_maps else None  # Default to the first map
+            if not api_map:
+                _LOGGER.error(f"No interactive maps found for appliance with id {pnc_id}")
+                return []
+            return [Segment(id=zone.id, name=zone.name) for zone in api_map.zones if zone.type == "clean"]
+
+        return []
+
+    async def vacuum_clean_segments(self, pnc_id: str, segment_ids: list[str]) -> None:
+        """Clean the segments (zones or rooms) of a vacuum cleaner."""
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            _LOGGER.error(f"Failed to clean segments for appliance with id {pnc_id}")
+            return
+
+        if appliance.type == Model.Robot700series.value or appliance.type == Model.VacuumHygienic700.value:
+            api_maps = await appliance.async_get_memory_maps()
+            api_map = api_maps[0] if api_maps else None
+            if not api_map:
+                _LOGGER.error(f"No memory maps found for appliance with id {pnc_id}")
+                return
+            rooms_payload = [
+                {
+                    "roomId": segment_id,
+                    "sweepMode": 0,
+                    "vacuumMode": "standard",
+                    "waterPumpRate": "off",
+                    "numberOfCleaningRepetitions": 1,
+                }
+                for segment_id in segment_ids
+            ]
+            command_payload = {
+                "mapCommand": "selectRoomsClean",
+                "mapId": api_map.id,
+                "type": 1,
+                "roomInfo": rooms_payload,
+            }
+            result = await appliance.send_command(command_payload)
+            _LOGGER.debug(f"Sent clean segments command with data: {command_payload}, result: {result}")
+            return
+
+        if appliance.type == Model.PUREi9.value:
+            api_maps = await appliance.async_get_interactive_maps()
+            api_map = api_maps[0] if api_maps else None  # Default to the first map
+            if not api_map:
+                _LOGGER.error(f"No interactive maps found for appliance with id {pnc_id}")
+                return
+            zone_power_mode = {zone.id: zone.power_mode for zone in api_map.zones}
+            default_power_mode = FAN_SPEEDS_PUREI92.get("smart", 2)
+            zones_payload = [
+                {
+                    "zoneId": segment_id,
+                    "powerMode": zone_power_mode.get(segment_id, default_power_mode),
+                }
+                for segment_id in segment_ids
+            ]
+            command_payload = {"CustomPlay": {"persistentMapId": api_map.id, "zones": zones_payload}}
+            result = await appliance.send_command(command_payload)
+            _LOGGER.debug(f"Sent clean segments command with data: {command_payload}, result: {result}")
+            return
+
     async def vacuum_send_command(self, pnc_id: str, command: str, params: dict | None = None):
         """Send a command to the vacuum cleaner. Currently not used for any specific command."""
 
@@ -765,56 +842,56 @@ class WellbeingApiClient:
             _LOGGER.error(f"Failed to send command '{command}' for appliance with id {pnc_id}")
             return
 
-        if command == "clean_room" and appliance.type  == Model.VacuumHygienic700.value:
+        if command == "clean_room" and appliance.type == Model.VacuumHygienic700.value:
+            if params is None:
+                raise ServiceValidationError(f"Parameters are required for command '{command}'")
             api_maps = await appliance.async_get_memory_maps()
 
             # Get mapid
-            try:
-                api_map = next((x for x in api_maps if x.data.get("name") == params['map_name']), None)
-            except:
-                raise ServiceValidationError(f"{params["map_name"]} does not exist")
+            api_map = next((x for x in api_maps if x.data.get("name") == params["map_name"]), None)
+            if not api_map:
+                raise ServiceValidationError(f"{params['map_name']} does not exist")
 
             # validate input and convert it to expected format
-            room_playload = {'mapCommand': 'selectRoomsClean', 
-                            'mapId' : api_map.id,
-                            'type': 1}
+            room_playload = {"mapCommand": "selectRoomsClean", "mapId": api_map.id, "type": 1}
             room_info = []
-            for room in params['room_info']:
-                try:
-                    room_id = next((r['id'] for r in api_map.data.get("rooms", []) if r['name'] == room['room_name']), None)
-                except:
+            for room in params["room_info"]:
+                room_id = next((r["id"] for r in api_map.data.get("rooms", []) if r["name"] == room["room_name"]), None)
+                if room_id is None:
                     raise ServiceValidationError(f"{room['room_name']} does not exist")
-                
-                sweep_mode = room['sweep_mode']
+
+                sweep_mode = room["sweep_mode"]
                 if sweep_mode not in [0, 1]:
                     sweep_mode = 0
-                    _LOGGER.debug(f"Invalid sweep_mode input 0 (only sweep) applied.")
-                
-                vacuum_mode = FAN_SPEEDS_700SERIES.get(room['vacuum_mode'])
-                if not isinstance(vacuum_mode, str):
-                    vacuum_mode = 'standard'
-                    _LOGGER.debug(f"Vacuum mode for {room['room_name']} does not exist, standard mode used.")
-                
-                water_pump_rate = room['water_pump_rate']
-                if water_pump_rate not in WATER_PUMP_RATES_700SERIES:
-                    water_pump_rate = 'off'
-                    _LOGGER.debug(f"Invalid water_pump_rate, 'off' applied.")
+                    _LOGGER.debug("Invalid sweep_mode input 0 (only sweep) applied.")
 
-                repetitions = room['repetitions']
+                vacuum_mode = FAN_SPEEDS_700SERIES.get(room["vacuum_mode"])
+                if not isinstance(vacuum_mode, str):
+                    vacuum_mode = "standard"
+                    _LOGGER.debug(f"Vacuum mode for {room['room_name']} does not exist, standard mode used.")
+
+                water_pump_rate = room["water_pump_rate"]
+                if water_pump_rate not in WATER_PUMP_RATES_700SERIES:
+                    water_pump_rate = "off"
+                    _LOGGER.debug("Invalid water_pump_rate, 'off' applied.")
+
+                repetitions = room["repetitions"]
                 if not isinstance(repetitions, int):
                     repetitions
                     _LOGGER.debug(f"Repetition 1 used as {room['room_name']} input is invalid.")
 
                 room_info.append(
-                    {'roomId' : room_id,
-                    'sweepMode' : sweep_mode,
-                    'vacuumMode' : vacuum_mode,
-                    'waterPumpRate' : water_pump_rate,
-                    'numberOfCleaningRepetitions': repetitions}
-                )            
-            room_playload['roomInfo'] = room_info
+                    {
+                        "roomId": room_id,
+                        "sweepMode": sweep_mode,
+                        "vacuumMode": vacuum_mode,
+                        "waterPumpRate": water_pump_rate,
+                        "numberOfCleaningRepetitions": repetitions,
+                    }
+                )
+            room_playload["roomInfo"] = room_info
 
-            #send command
+            # send command
             result = await appliance.send_command(room_playload)
             _LOGGER.debug(f"Sent command '{command}' with data: {room_playload}, result: {result}")
             return
