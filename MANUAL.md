@@ -37,3 +37,24 @@ data:
 target:
   entity_id: vacuum.c3po_robotstatus
 ```
+### Hygenic700
+
+Room cleaning available in Hygenic700 (Gordias) robot vacuum cleaner. Command expect 'map_name' (from Electrolux app), room_name (from Electrolux app), 'sweep_mode' (0 (sweep only), 1 (mop & sweep)), 'vacuum_mode' (quiet, eco, standard, power), 'water_pump_rate', (off, low, medium, high), 'repetitions'. 
+
+#### Example
+
+```
+action: vacuum.send_command
+target:
+  entity_id: vacuum.wellbeing_vacuum_state
+data:
+  params:
+    map_name: Map1
+    room_info:
+      - room_name: Kitchen
+        sweep_mode: 0
+        vacuum_mode: standard
+        water_pum_rate: "off"
+        repetitions: 1
+  command: clean_room
+```
