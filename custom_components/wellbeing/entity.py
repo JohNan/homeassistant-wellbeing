@@ -12,7 +12,14 @@ from .const import DOMAIN
 
 
 class WellbeingEntity(CoordinatorEntity):
-    def __init__(self, coordinator: WellbeingDataUpdateCoordinator, config_entry, pnc_id, entity_type, entity_attr):
+    def __init__(
+        self,
+        coordinator: WellbeingDataUpdateCoordinator,
+        config_entry,
+        pnc_id,
+        entity_type,
+        entity_attr,
+    ):
         super().__init__(coordinator)
         self.api = coordinator.api
         self.entity_attr = entity_attr
@@ -57,7 +64,9 @@ class WellbeingEntity(CoordinatorEntity):
         return {
             "integration": DOMAIN,
             "capabilities": [
-                key for key, value in self.get_appliance.capabilities.items() if value["access"] == "readwrite"
+                key
+                for key, value in self.get_appliance.capabilities.items()
+                if value["access"] == "readwrite"
             ],
         }
 
