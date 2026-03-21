@@ -113,7 +113,7 @@ class WellbeingFlowHandler(ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
-        return WellbeingOptionsFlowHandler(config_entry)
+        return WellbeingOptionsFlowHandler()
 
     async def _show_config_form(self, user_input):  # pylint: disable=unused-argument
         """Show the configuration form to edit location data."""
@@ -158,10 +158,8 @@ class WellBeingConfigFlowTokenManager(TokenManager):
 class WellbeingOptionsFlowHandler(config_entries.OptionsFlow):
     """Config flow options handler for wellbeing."""
 
-    def __init__(self, config_entry):
+    def __init__(self):
         """Initialize HACS options flow."""
-        self.config_entry = config_entry
-        self.options = dict(config_entry.options)
 
     async def async_step_init(self, user_input=None):  # pylint: disable=unused-argument
         """Manage the options."""
@@ -170,8 +168,7 @@ class WellbeingOptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_user(self, user_input=None):
         """Handle a flow initialized by the user."""
         if user_input is not None:
-            self.options.update(user_input)
-            return await self._update_options()
+            return self.async_create_entry(title=CONFIG_FLOW_TITLE, data=user_input)
 
         return self.async_show_form(
             step_id="user",
@@ -186,7 +183,3 @@ class WellbeingOptionsFlowHandler(config_entries.OptionsFlow):
                 }
             ),
         )
-
-    async def _update_options(self):
-        """Update config entry options."""
-        return self.async_create_entry(title=CONFIG_FLOW_TITLE, data=self.options)
