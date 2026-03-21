@@ -16,7 +16,9 @@ async def async_setup_entry(hass, entry, async_add_devices):
         for pnc_id, appliance in appliances.appliances.items():
             async_add_devices(
                 [
-                    WellbeingBinarySensor(coordinator, entry, pnc_id, entity.entity_type, entity.attr)
+                    WellbeingBinarySensor(
+                        coordinator, entry, pnc_id, entity.entity_type, entity.attr
+                    )
                     for entity in appliance.entities
                     if entity.entity_type == Platform.BINARY_SENSOR
                 ]
