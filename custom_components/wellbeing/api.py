@@ -103,6 +103,8 @@ class Model(str, Enum):
     Robot700series = "700series"  # 700series vacuum robot series
     UltimateHome700 = "UltimateHome 700"  # Dehumidifier
     VacuumHygienic700 = "Gordias"  # HYGIENIC700
+    COMFORT600 = "COMFORT600"
+    AZUL = "AZUL"
 
 
 class WorkMode(str, Enum):
@@ -191,7 +193,22 @@ class ApplianceBinary(ApplianceEntity):
 
     @property
     def state(self):
-        return self._state in ["enabled", True, "Connected", "on"]
+        return self._state in [
+            "enabled",
+            True,
+            "Connected",
+            "on",
+            "ON",
+            "running",
+            "RUNNING",
+        ]
+
+
+class ApplianceClimate(ApplianceEntity):
+    entity_type: int = Platform.CLIMATE
+
+    def __init__(self, name, attr) -> None:
+        super().__init__(name, attr)
 
 
 class Appliance:
@@ -516,6 +533,19 @@ class Appliance:
             ),
         ]
 
+        ac_entities = [
+            ApplianceClimate(name="Climate", attr="mode"),
+            ApplianceSensor(
+                name="Target Temperature (Celsius)",
+                attr="targetTemperatureC",
+                unit=UnitOfTemperature.CELSIUS,
+                device_class=SensorDeviceClass.TEMPERATURE,
+                state_class=SensorStateClass.MEASUREMENT,
+            ),
+            ApplianceBinary(name="Sleep Mode", attr="sleepMode"),
+            ApplianceBinary(name="Compressor State", attr="compressorState"),
+        ]
+
         return (
             common_entities
             + a9_entities
@@ -527,6 +557,7 @@ class Appliance:
             + ultimate_home_700_entities
             + vacuum_700_series_entities
             + vacuum_hygienic_700_entities
+            + ac_entities
         )
 
     def get_entity(self, entity_type, entity_attr):
@@ -560,6 +591,8 @@ class Appliance:
             self.firmware = data.get("firmwareVersion")
         if "Workmode" in data:
             self.mode = WorkMode(data.get("Workmode"))
+        elif "mode" in data:
+            self.mode = data.get("mode")
         if "LouverSwingWorkmode" in data:
             self.louver_swing_mode = LouverSwingMode(data.get("LouverSwing"))
         if "powerMode" in data:
@@ -732,6 +765,7 @@ class WellbeingApiClient:
                 and appliance.device_type != "ROBOTIC_VACUUM_CLEANER"
                 and appliance.device_type != "MULTI_AIR_PURIFIER"
                 and appliance.device_type != "DEHUMIDIFIER"
+                and appliance.device_type != "PORTABLE_AIR_CONDITIONER"
             ):
                 continue
 
@@ -1104,3 +1138,77 @@ class WellbeingApiClient:
 
         await appliance.send_command(data)
         _LOGGER.debug(f"Set {feature} State to {state}")
+
+    async def ac_set_temperature(self, pnc_id: str, temp: float):
+        data = {"targetTemperatureC": temp}
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            _LOGGER.error(
+                f"Failed to set AC temperature for appliance with id {pnc_id}"
+            )
+            return
+
+        result = await appliance.send_command(data)
+        _LOGGER.debug(f"Set AC temperature: {result}")
+
+    async def ac_set_mode(self, pnc_id: str, mode: str):
+        data = {"mode": mode.upper()}
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            _LOGGER.error(f"Failed to set AC mode for appliance with id {pnc_id}")
+            return
+
+        result = await appliance.send_command(data)
+        _LOGGER.debug(f"Set AC mode: {result}")
+
+    async def ac_set_fan_mode(self, pnc_id: str, fan_mode: str):
+        data = {"fanSpeedSetting": fan_mode}
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            _LOGGER.error(f"Failed to set AC fan mode for appliance with id {pnc_id}")
+            return
+
+        result = await appliance.send_command(data)
+        _LOGGER.debug(f"Set AC fan mode: {result}")
+
+    async def ac_set_vertical_swing(self, pnc_id: str, state: str):
+        data = {"verticalSwing": state.upper()}
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            _LOGGER.error(
+                f"Failed to set AC vertical swing for appliance with id {pnc_id}"
+            )
+            return
+
+        result = await appliance.send_command(data)
+        _LOGGER.debug(f"Set AC vertical swing: {result}")
+
+    async def ac_set_sleep_mode(self, pnc_id: str, state: str):
+        data = {"sleepMode": state.upper()}
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            _LOGGER.error(f"Failed to set AC sleep mode for appliance with id {pnc_id}")
+            return
+
+        result = await appliance.send_command(data)
+        _LOGGER.debug(f"Set AC sleep mode: {result}")
+
+    async def ac_turn_on(self, pnc_id: str):
+        data = {"executeCommand": "ON"}
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            _LOGGER.error(f"Failed to turn on AC for appliance with id {pnc_id}")
+            return
+
+        result = await appliance.send_command(data)
+        _LOGGER.debug(f"Turn on AC: {result}")
+
+    async def ac_turn_off(self, pnc_id: str):
+        data = {"executeCommand": "OFF"}
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            _LOGGER.error(f"Failed to turn off AC for appliance with id {pnc_id}")
+            return
+
+        result = await appliance.send_command(data)
+        _LOGGER.debug(f"Turn off AC: {result}")

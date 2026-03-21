@@ -29,6 +29,7 @@ PLATFORMS = [
     Platform.BINARY_SENSOR,
     Platform.SWITCH,
     Platform.VACUUM,
+    Platform.CLIMATE,
 ]
 
 
