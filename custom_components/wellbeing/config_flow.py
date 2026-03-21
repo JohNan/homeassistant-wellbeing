@@ -33,14 +33,18 @@ class WellbeingFlowHandler(ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
         self._errors = {}
         self._token_manager = WellBeingConfigFlowTokenManager()
 
-    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Handle a flow initialized by the user."""
         self._errors = {}
         _LOGGER.debug(user_input)
         if user_input is not None:
             try:
                 await self._test_credentials(
-                    user_input[CONF_ACCESS_TOKEN], user_input[CONF_REFRESH_TOKEN], user_input[CONF_API_KEY]
+                    user_input[CONF_ACCESS_TOKEN],
+                    user_input[CONF_REFRESH_TOKEN],
+                    user_input[CONF_API_KEY],
                 )
 
                 # Copy the maybe possibly credentials
@@ -55,7 +59,9 @@ class WellbeingFlowHandler(ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
 
         return await self._show_config_form(user_input)
 
-    async def async_step_reauth(self, entry_data: Mapping[str, Any]) -> ConfigFlowResult:
+    async def async_step_reauth(
+        self, entry_data: Mapping[str, Any]
+    ) -> ConfigFlowResult:
         """Handle configuration by re-auth."""
         if entry := self.hass.config_entries.async_get_entry(self.context["entry_id"]):
             self.entry = entry
@@ -68,7 +74,9 @@ class WellbeingFlowHandler(ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
         if user_input is not None:
             try:
                 await self._test_credentials(
-                    user_input[CONF_ACCESS_TOKEN], user_input[CONF_REFRESH_TOKEN], user_input[CONF_API_KEY]
+                    user_input[CONF_ACCESS_TOKEN],
+                    user_input[CONF_REFRESH_TOKEN],
+                    user_input[CONF_API_KEY],
                 )
 
                 # Copy the maybe possibly credentials
@@ -86,9 +94,17 @@ class WellbeingFlowHandler(ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
             step_id="reauth_validate",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_API_KEY, default=self.entry.data.get(CONF_API_KEY, "")): str,
-                    vol.Required(CONF_ACCESS_TOKEN, default=self.entry.data.get(CONF_ACCESS_TOKEN, "")): str,
-                    vol.Required(CONF_REFRESH_TOKEN, default=self.entry.data.get(CONF_REFRESH_TOKEN, "")): str,
+                    vol.Required(
+                        CONF_API_KEY, default=self.entry.data.get(CONF_API_KEY, "")
+                    ): str,
+                    vol.Required(
+                        CONF_ACCESS_TOKEN,
+                        default=self.entry.data.get(CONF_ACCESS_TOKEN, ""),
+                    ): str,
+                    vol.Required(
+                        CONF_REFRESH_TOKEN,
+                        default=self.entry.data.get(CONF_REFRESH_TOKEN, ""),
+                    ): str,
                 }
             ),
             errors=errors,
@@ -110,15 +126,22 @@ class WellbeingFlowHandler(ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
                     vol.Required(CONF_REFRESH_TOKEN): str,
                 }
             ),
-            description_placeholders={"docs_url": "https://github.com/JohNan/homeassistant-wellbeing"},
+            description_placeholders={
+                "docs_url": "https://github.com/JohNan/homeassistant-wellbeing"
+            },
             errors=self._errors,
         )
 
-    async def _test_credentials(self, access_token: str, refresh_token: str, api_key: str):
+    async def _test_credentials(
+        self, access_token: str, refresh_token: str, api_key: str
+    ):
         """Return true if credentials is valid."""
 
         self._token_manager.update(access_token, refresh_token, api_key)
-        client = ElectroluxHubAPI(session=async_get_clientsession(self.hass), token_manager=self._token_manager)
+        client = ElectroluxHubAPI(
+            session=async_get_clientsession(self.hass),
+            token_manager=self._token_manager,
+        )
         await client.async_get_appliances()
 
 
@@ -156,7 +179,9 @@ class WellbeingOptionsFlowHandler(config_entries.OptionsFlow):
                 {
                     vol.Optional(
                         CONF_SCAN_INTERVAL,
-                        default=self.config_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
+                        default=self.config_entry.options.get(
+                            CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
+                        ),
                     ): cv.positive_int,
                 }
             ),

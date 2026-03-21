@@ -29,6 +29,7 @@ PLATFORMS = [
     Platform.BINARY_SENSOR,
     Platform.SWITCH,
     Platform.VACUUM,
+    Platform.CLIMATE,
 ]
 
 
@@ -44,13 +45,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     token_manager = WellBeingTokenManager(hass, entry)
     try:
-        hub = ElectroluxHubAPI(session=async_get_clientsession(hass), token_manager=token_manager)
+        hub = ElectroluxHubAPI(
+            session=async_get_clientsession(hass), token_manager=token_manager
+        )
     except Exception as exception:
         raise ConfigEntryAuthFailed("Failed to setup API") from exception
 
     client = WellbeingApiClient(hub)
 
-    coordinator = WellbeingDataUpdateCoordinator(hass, client=client, update_interval=update_interval)
+    coordinator = WellbeingDataUpdateCoordinator(
+        hass, client=client, update_interval=update_interval
+    )
 
     await coordinator.async_config_entry_first_refresh()
 
@@ -82,7 +87,12 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
 class WellbeingDataUpdateCoordinator(DataUpdateCoordinator):
     """Class to manage fetching data from the API."""
 
-    def __init__(self, hass: HomeAssistant, client: WellbeingApiClient, update_interval: timedelta) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        client: WellbeingApiClient,
+        update_interval: timedelta,
+    ) -> None:
         """Initialize."""
         self.api = client
         super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=update_interval)
@@ -114,7 +124,11 @@ class WellBeingTokenManager(TokenManager):
 
         self._hass.config_entries.async_update_entry(
             self._entry,
-            data={CONF_API_KEY: self.api_key, CONF_REFRESH_TOKEN: refresh_token, CONF_ACCESS_TOKEN: access_token},
+            data={
+                CONF_API_KEY: self.api_key,
+                CONF_REFRESH_TOKEN: refresh_token,
+                CONF_ACCESS_TOKEN: access_token,
+            },
         )
 
     @staticmethod

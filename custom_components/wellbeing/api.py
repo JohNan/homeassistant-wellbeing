@@ -103,6 +103,8 @@ class Model(str, Enum):
     Robot700series = "700series"  # 700series vacuum robot series
     UltimateHome700 = "UltimateHome 700"  # Dehumidifier
     VacuumHygienic700 = "Gordias"  # HYGIENIC700
+    COMFORT600 = "COMFORT600"
+    AZUL = "AZUL"
 
 
 class WorkMode(str, Enum):
@@ -184,12 +186,29 @@ class ApplianceVacuum(ApplianceEntity):
 class ApplianceBinary(ApplianceEntity):
     entity_type: int = Platform.BINARY_SENSOR
 
-    def __init__(self, name, attr, device_class=None, entity_category: EntityCategory = UNDEFINED) -> None:
+    def __init__(
+        self, name, attr, device_class=None, entity_category: EntityCategory = UNDEFINED
+    ) -> None:
         super().__init__(name, attr, device_class, entity_category)
 
     @property
     def state(self):
-        return self._state in ["enabled", True, "Connected", "on"]
+        return self._state in [
+            "enabled",
+            True,
+            "Connected",
+            "on",
+            "ON",
+            "running",
+            "RUNNING",
+        ]
+
+
+class ApplianceClimate(ApplianceEntity):
+    entity_type: int = Platform.CLIMATE
+
+    def __init__(self, name, attr) -> None:
+        super().__init__(name, attr)
 
 
 class Appliance:
@@ -217,9 +236,21 @@ class Appliance:
                 device_class=SensorDeviceClass.PM25,
                 state_class=SensorStateClass.MEASUREMENT,
             ),
-            ApplianceSensor(name="Hepa Filter", attr="hepaFilterState", device_class=SensorDeviceClass.ENUM),
-            ApplianceSensor(name="Operative Mode", attr="operativeMode", device_class=SensorDeviceClass.ENUM),
-            ApplianceSensor(name="Air Quality", attr="airQualityState", device_class=SensorDeviceClass.ENUM),
+            ApplianceSensor(
+                name="Hepa Filter",
+                attr="hepaFilterState",
+                device_class=SensorDeviceClass.ENUM,
+            ),
+            ApplianceSensor(
+                name="Operative Mode",
+                attr="operativeMode",
+                device_class=SensorDeviceClass.ENUM,
+            ),
+            ApplianceSensor(
+                name="Air Quality",
+                attr="airQualityState",
+                device_class=SensorDeviceClass.ENUM,
+            ),
             ApplianceSensor(
                 name="Ambient Temperature (Fahrenheit)",
                 attr="ambientTemperatureF",
@@ -251,13 +282,25 @@ class Appliance:
             ApplianceBinary(name="Vertical Swing", attr="verticalSwing"),
             ApplianceBinary(name="Water Tank Full", attr="waterTankFull"),
             ApplianceBinary(name="Appliance State", attr="applianceState"),
-            ApplianceBinary(name="UI Lock", attr="uiLockMode", device_class=BinarySensorDeviceClass.LOCK),
+            ApplianceBinary(
+                name="UI Lock",
+                attr="uiLockMode",
+                device_class=BinarySensorDeviceClass.LOCK,
+            ),
             ApplianceSensor(
                 name="Target Humidity",
                 attr="targetHumidity",
             ),
-            ApplianceSensor(name="Fan Speed Setting", attr="fanSpeedSetting", device_class=SensorDeviceClass.ENUM),
-            ApplianceSensor(name="Fan Speed State", attr="fanSpeedState", device_class=SensorDeviceClass.ENUM),
+            ApplianceSensor(
+                name="Fan Speed Setting",
+                attr="fanSpeedSetting",
+                device_class=SensorDeviceClass.ENUM,
+            ),
+            ApplianceSensor(
+                name="Fan Speed State",
+                attr="fanSpeedState",
+                device_class=SensorDeviceClass.ENUM,
+            ),
         ]
 
         pure500_entities = [
@@ -291,7 +334,11 @@ class Appliance:
                 attr="HumidityTarget",
                 unit=PERCENTAGE,
             ),
-            ApplianceSensor(name="Louver Swing", attr="LouverSwing", device_class=SensorDeviceClass.ENUM),
+            ApplianceSensor(
+                name="Louver Swing",
+                attr="LouverSwing",
+                device_class=SensorDeviceClass.ENUM,
+            ),
             ApplianceBinary(
                 name="Empty Water Tray",
                 attr="WaterTrayLevelLow",
@@ -405,7 +452,10 @@ class Appliance:
                 state_class=SensorStateClass.MEASUREMENT,
             ),
             ApplianceSensor(
-                name="TVOC", attr="TVOC", unit=CONCENTRATION_PARTS_PER_BILLION, state_class=SensorStateClass.MEASUREMENT
+                name="TVOC",
+                attr="TVOC",
+                unit=CONCENTRATION_PARTS_PER_BILLION,
+                state_class=SensorStateClass.MEASUREMENT,
             ),
             ApplianceSensor(
                 name="eCO2",
@@ -442,7 +492,9 @@ class Appliance:
                 device_class=SensorDeviceClass.HUMIDITY,
                 state_class=SensorStateClass.MEASUREMENT,
             ),
-            ApplianceSensor(name="Mode", attr="Workmode", device_class=SensorDeviceClass.ENUM),
+            ApplianceSensor(
+                name="Mode", attr="Workmode", device_class=SensorDeviceClass.ENUM
+            ),
             ApplianceSensor(
                 name="Signal Strength",
                 attr="SignalStrength",
@@ -471,8 +523,27 @@ class Appliance:
                 device_class=BinarySensorDeviceClass.CONNECTIVITY,
                 entity_category=EntityCategory.DIAGNOSTIC,
             ),
-            ApplianceBinary(name="Status", attr="status", entity_category=EntityCategory.DIAGNOSTIC),
-            ApplianceBinary(name="Safety Lock", attr="SafetyLock", device_class=BinarySensorDeviceClass.LOCK),
+            ApplianceBinary(
+                name="Status", attr="status", entity_category=EntityCategory.DIAGNOSTIC
+            ),
+            ApplianceBinary(
+                name="Safety Lock",
+                attr="SafetyLock",
+                device_class=BinarySensorDeviceClass.LOCK,
+            ),
+        ]
+
+        ac_entities = [
+            ApplianceClimate(name="Climate", attr="mode"),
+            ApplianceSensor(
+                name="Target Temperature (Celsius)",
+                attr="targetTemperatureC",
+                unit=UnitOfTemperature.CELSIUS,
+                device_class=SensorDeviceClass.TEMPERATURE,
+                state_class=SensorStateClass.MEASUREMENT,
+            ),
+            ApplianceBinary(name="Sleep Mode", attr="sleepMode"),
+            ApplianceBinary(name="Compressor State", attr="compressorState"),
         ]
 
         return (
@@ -486,15 +557,21 @@ class Appliance:
             + ultimate_home_700_entities
             + vacuum_700_series_entities
             + vacuum_hygienic_700_entities
+            + ac_entities
         )
 
     def get_entity(self, entity_type, entity_attr):
         return next(
-            entity for entity in self.entities if entity.attr == entity_attr and entity.entity_type == entity_type
+            entity
+            for entity in self.entities
+            if entity.attr == entity_attr and entity.entity_type == entity_type
         )
 
     def has_capability(self, capability) -> bool:
-        return capability in self.capabilities and self.capabilities[capability]["access"] == "readwrite"
+        return (
+            capability in self.capabilities
+            and self.capabilities[capability]["access"] == "readwrite"
+        )
 
     def clear_mode(self):
         self.mode = WorkMode.UNDEFINED
@@ -514,6 +591,8 @@ class Appliance:
             self.firmware = data.get("firmwareVersion")
         if "Workmode" in data:
             self.mode = WorkMode(data.get("Workmode"))
+        elif "mode" in data:
+            self.mode = data.get("mode")
         if "LouverSwingWorkmode" in data:
             self.louver_swing_mode = LouverSwingMode(data.get("LouverSwing"))
         if "powerMode" in data:
@@ -524,7 +603,11 @@ class Appliance:
             self.vacuum_mode = data.get("vacuumMode")
 
         self.capabilities = capabilities
-        self.entities = [entity.setup(data) for entity in Appliance._create_entities(data) if entity.attr in data]
+        self.entities = [
+            entity.setup(data)
+            for entity in Appliance._create_entities(data)
+            if entity.attr in data
+        ]
 
     @property
     def preset_modes(self) -> list[WorkMode]:
@@ -571,7 +654,10 @@ class Appliance:
             case Model.Robot700series.value | Model.VacuumHygienic700.value:
                 return 1, 100
             case Model.PUREi9.value:
-                return 2, 6  # Do not include lowest value of 1 to make this mean empty (0%) battery
+                return (
+                    2,
+                    6,
+                )  # Do not include lowest value of 1 to make this mean empty (0%) battery
         return 1, 100  # Default battery range
 
     @property
@@ -593,12 +679,33 @@ class Appliance:
         """Return the current fan speed of the vacuum cleaner."""
         match Model(self.model):
             case Model.Robot700series.value | Model.VacuumHygienic700.value:
-                return next((speed for speed, mode in FAN_SPEEDS_700SERIES.items() if mode == self.vacuum_mode), None)
+                return next(
+                    (
+                        speed
+                        for speed, mode in FAN_SPEEDS_700SERIES.items()
+                        if mode == self.vacuum_mode
+                    ),
+                    None,
+                )
             case Model.PUREi9.value:
                 if hasattr(self, "power_mode"):
-                    return next((speed for speed, mode in FAN_SPEEDS_PUREI92.items() if mode == self.power_mode), None)
+                    return next(
+                        (
+                            speed
+                            for speed, mode in FAN_SPEEDS_PUREI92.items()
+                            if mode == self.power_mode
+                        ),
+                        None,
+                    )
                 if hasattr(self, "eco_mode"):
-                    return next((speed for speed, mode in FAN_SPEEDS_PUREI9.items() if mode == self.eco_mode), None)
+                    return next(
+                        (
+                            speed
+                            for speed, mode in FAN_SPEEDS_PUREI9.items()
+                            if mode == self.eco_mode
+                        ),
+                        None,
+                    )
                 return "power"
         return None
 
@@ -623,7 +730,6 @@ class Appliances:
 
 
 class WellbeingApiClient:
-
     def __init__(self, hub: ElectroluxHubAPI) -> None:
         """Sample API Client."""
         self._api_appliances: dict[str, ApiAppliance] = {}
@@ -659,6 +765,7 @@ class WellbeingApiClient:
                 and appliance.device_type != "ROBOTIC_VACUUM_CLEANER"
                 and appliance.device_type != "MULTI_AIR_PURIFIER"
                 and appliance.device_type != "DEHUMIDIFIER"
+                and appliance.device_type != "PORTABLE_AIR_CONDITIONER"
             ):
                 continue
 
@@ -669,7 +776,9 @@ class WellbeingApiClient:
 
             data = appliance.state
             data["status"] = appliance.state_data.get("status", "unknown")
-            data["connectionState"] = appliance.state_data.get("connectionState", "unknown")
+            data["connectionState"] = appliance.state_data.get(
+                "connectionState", "unknown"
+            )
 
             app.setup(data, appliance.capabilities_data)
 
@@ -681,7 +790,9 @@ class WellbeingApiClient:
         """Start a vacuum cleaner."""
         appliance = self._api_appliances.get(pnc_id, None)
         if appliance is None:
-            _LOGGER.error(f"Failed to send vacuum start command for appliance with id {pnc_id}")
+            _LOGGER.error(
+                f"Failed to send vacuum start command for appliance with id {pnc_id}"
+            )
             return
         data = {}
         match Model(appliance.type):
@@ -696,7 +807,9 @@ class WellbeingApiClient:
         """Stop a vacuum cleaner."""
         appliance = self._api_appliances.get(pnc_id, None)
         if appliance is None:
-            _LOGGER.error(f"Failed to send vacuum stop command for appliance with id {pnc_id}")
+            _LOGGER.error(
+                f"Failed to send vacuum stop command for appliance with id {pnc_id}"
+            )
             return
         data = {}
         match Model(appliance.type):
@@ -711,7 +824,9 @@ class WellbeingApiClient:
         """Pause a vacuum cleaner."""
         appliance = self._api_appliances.get(pnc_id, None)
         if appliance is None:
-            _LOGGER.error(f"Failed to send vacuum pause command for appliance with id {pnc_id}")
+            _LOGGER.error(
+                f"Failed to send vacuum pause command for appliance with id {pnc_id}"
+            )
             return
         data = {}
         match Model(appliance.type):
@@ -726,7 +841,9 @@ class WellbeingApiClient:
         """Return a vacuum cleaner to its base."""
         appliance = self._api_appliances.get(pnc_id, None)
         if appliance is None:
-            _LOGGER.error(f"Failed to send vacuum return to base command for appliance with id {pnc_id}")
+            _LOGGER.error(
+                f"Failed to send vacuum return to base command for appliance with id {pnc_id}"
+            )
             return
         data = {}
         match Model(appliance.type):
@@ -763,7 +880,10 @@ class WellbeingApiClient:
             _LOGGER.error(f"Failed to get segments for appliance with id {pnc_id}")
             return []
 
-        if appliance.type == Model.Robot700series.value or appliance.type == Model.VacuumHygienic700.value:
+        if (
+            appliance.type == Model.Robot700series.value
+            or appliance.type == Model.VacuumHygienic700.value
+        ):
             api_maps = await appliance.async_get_memory_maps()
             api_map = api_maps[0] if api_maps else None  # Default to the first map
             if not api_map:
@@ -775,9 +895,15 @@ class WellbeingApiClient:
             api_maps = await appliance.async_get_interactive_maps()
             api_map = api_maps[0] if api_maps else None  # Default to the first map
             if not api_map:
-                _LOGGER.error(f"No interactive maps found for appliance with id {pnc_id}")
+                _LOGGER.error(
+                    f"No interactive maps found for appliance with id {pnc_id}"
+                )
                 return []
-            return [Segment(id=zone.id, name=zone.name) for zone in api_map.zones if zone.type == "clean"]
+            return [
+                Segment(id=zone.id, name=zone.name)
+                for zone in api_map.zones
+                if zone.type == "clean"
+            ]
 
         return []
 
@@ -788,7 +914,10 @@ class WellbeingApiClient:
             _LOGGER.error(f"Failed to clean segments for appliance with id {pnc_id}")
             return
 
-        if appliance.type == Model.Robot700series.value or appliance.type == Model.VacuumHygienic700.value:
+        if (
+            appliance.type == Model.Robot700series.value
+            or appliance.type == Model.VacuumHygienic700.value
+        ):
             api_maps = await appliance.async_get_memory_maps()
             api_map = api_maps[0] if api_maps else None
             if not api_map:
@@ -811,14 +940,18 @@ class WellbeingApiClient:
                 "roomInfo": rooms_payload,
             }
             result = await appliance.send_command(command_payload)
-            _LOGGER.debug(f"Sent clean segments command with data: {command_payload}, result: {result}")
+            _LOGGER.debug(
+                f"Sent clean segments command with data: {command_payload}, result: {result}"
+            )
             return
 
         if appliance.type == Model.PUREi9.value:
             api_maps = await appliance.async_get_interactive_maps()
             api_map = api_maps[0] if api_maps else None  # Default to the first map
             if not api_map:
-                _LOGGER.error(f"No interactive maps found for appliance with id {pnc_id}")
+                _LOGGER.error(
+                    f"No interactive maps found for appliance with id {pnc_id}"
+                )
                 return
             zone_power_mode = {zone.id: zone.power_mode for zone in api_map.zones}
             default_power_mode = FAN_SPEEDS_PUREI92.get("smart", 2)
@@ -829,34 +962,57 @@ class WellbeingApiClient:
                 }
                 for segment_id in segment_ids
             ]
-            command_payload = {"CustomPlay": {"persistentMapId": api_map.id, "zones": zones_payload}}
+            command_payload = {
+                "CustomPlay": {"persistentMapId": api_map.id, "zones": zones_payload}
+            }
             result = await appliance.send_command(command_payload)
-            _LOGGER.debug(f"Sent clean segments command with data: {command_payload}, result: {result}")
+            _LOGGER.debug(
+                f"Sent clean segments command with data: {command_payload}, result: {result}"
+            )
             return
 
-    async def vacuum_send_command(self, pnc_id: str, command: str, params: dict | None = None):
+    async def vacuum_send_command(
+        self, pnc_id: str, command: str, params: dict | None = None
+    ):
         """Send a command to the vacuum cleaner. Currently not used for any specific command."""
 
         appliance = self._api_appliances.get(pnc_id, None)
         if appliance is None:
-            _LOGGER.error(f"Failed to send command '{command}' for appliance with id {pnc_id}")
+            _LOGGER.error(
+                f"Failed to send command '{command}' for appliance with id {pnc_id}"
+            )
             return
 
         if command == "clean_room" and appliance.type == Model.VacuumHygienic700.value:
             if params is None:
-                raise ServiceValidationError(f"Parameters are required for command '{command}'")
+                raise ServiceValidationError(
+                    f"Parameters are required for command '{command}'"
+                )
             api_maps = await appliance.async_get_memory_maps()
 
             # Get mapid
-            api_map = next((x for x in api_maps if x.data.get("name") == params["map_name"]), None)
+            api_map = next(
+                (x for x in api_maps if x.data.get("name") == params["map_name"]), None
+            )
             if not api_map:
                 raise ServiceValidationError(f"{params['map_name']} does not exist")
 
             # validate input and convert it to expected format
-            room_playload = {"mapCommand": "selectRoomsClean", "mapId": api_map.id, "type": 1}
+            room_playload = {
+                "mapCommand": "selectRoomsClean",
+                "mapId": api_map.id,
+                "type": 1,
+            }
             room_info = []
             for room in params["room_info"]:
-                room_id = next((r["id"] for r in api_map.data.get("rooms", []) if r["name"] == room["room_name"]), None)
+                room_id = next(
+                    (
+                        r["id"]
+                        for r in api_map.data.get("rooms", [])
+                        if r["name"] == room["room_name"]
+                    ),
+                    None,
+                )
                 if room_id is None:
                     raise ServiceValidationError(f"{room['room_name']} does not exist")
 
@@ -868,7 +1024,9 @@ class WellbeingApiClient:
                 vacuum_mode = FAN_SPEEDS_700SERIES.get(room["vacuum_mode"])
                 if not isinstance(vacuum_mode, str):
                     vacuum_mode = "standard"
-                    _LOGGER.debug(f"Vacuum mode for {room['room_name']} does not exist, standard mode used.")
+                    _LOGGER.debug(
+                        f"Vacuum mode for {room['room_name']} does not exist, standard mode used."
+                    )
 
                 water_pump_rate = room["water_pump_rate"]
                 if water_pump_rate not in WATER_PUMP_RATES_700SERIES:
@@ -878,7 +1036,9 @@ class WellbeingApiClient:
                 repetitions = room["repetitions"]
                 if not isinstance(repetitions, int):
                     repetitions
-                    _LOGGER.debug(f"Repetition 1 used as {room['room_name']} input is invalid.")
+                    _LOGGER.debug(
+                        f"Repetition 1 used as {room['room_name']} input is invalid."
+                    )
 
                 room_info.append(
                     {
@@ -893,7 +1053,9 @@ class WellbeingApiClient:
 
             # send command
             result = await appliance.send_command(room_playload)
-            _LOGGER.debug(f"Sent command '{command}' with data: {room_playload}, result: {result}")
+            _LOGGER.debug(
+                f"Sent command '{command}' with data: {room_playload}, result: {result}"
+            )
             return
 
         if command == "clean_zones" and appliance.type == Model.PUREi9.value:
@@ -901,31 +1063,47 @@ class WellbeingApiClient:
             try:
                 params = INTERACTIVE_MAP_SCHEMA(params)
             except vol.Invalid as e:
-                raise ServiceValidationError(f"Invalid parameters for command '{command}': {e}") from e
+                raise ServiceValidationError(
+                    f"Invalid parameters for command '{command}': {e}"
+                ) from e
             assert isinstance(params, dict)  # Needed for mypy type checking
             # Build the command payload for the PUREi9 interactive map.
             api_maps = await appliance.async_get_interactive_maps()
             api_map = next((m for m in api_maps if m.name == params["map"]), None)
             if not api_map:
-                raise ServiceValidationError(f"Map '{params['map']}' not found for appliance with id {pnc_id}")
+                raise ServiceValidationError(
+                    f"Map '{params['map']}' not found for appliance with id {pnc_id}"
+                )
             zones_payload = []
             for zone in params["zones"]:
-                api_zone = next((z for z in api_map.zones if z.name == zone["zone"]), None)
+                api_zone = next(
+                    (z for z in api_map.zones if z.name == zone["zone"]), None
+                )
                 if not api_zone:
-                    raise ServiceValidationError(f"Zone '{zone['zone']}' not found in map '{params['map']}'")
+                    raise ServiceValidationError(
+                        f"Zone '{zone['zone']}' not found in map '{params['map']}'"
+                    )
                 zones_payload.append(
                     {
                         "zoneId": api_zone.id,
-                        "powerMode": FAN_SPEEDS_PUREI92.get(zone.get("fan_speed"), api_zone.power_mode),
+                        "powerMode": FAN_SPEEDS_PUREI92.get(
+                            zone.get("fan_speed"), api_zone.power_mode
+                        ),
                     }
                 )
-            command_payload = {"CustomPlay": {"persistentMapId": api_map.id, "zones": zones_payload}}
+            command_payload = {
+                "CustomPlay": {"persistentMapId": api_map.id, "zones": zones_payload}
+            }
             # Send the command to the appliance.
             result = await appliance.send_command(command_payload)
-            _LOGGER.debug(f"Sent command '{command}' with data: {command_payload}, result: {result}")
+            _LOGGER.debug(
+                f"Sent command '{command}' with data: {command_payload}, result: {result}"
+            )
             return
 
-        raise ServiceValidationError(f"Command '{command}' is not recognized for appliance with id {pnc_id}")
+        raise ServiceValidationError(
+            f"Command '{command}' is not recognized for appliance with id {pnc_id}"
+        )
 
     async def set_fan_speed(self, pnc_id: str, level: int):
         data = {"Fanspeed": level}
@@ -953,8 +1131,84 @@ class WellbeingApiClient:
         data = {feature: state}
         appliance = self._api_appliances.get(pnc_id, None)
         if appliance is None:
-            _LOGGER.error(f"Failed to set feature {feature} for appliance with id {pnc_id}")
+            _LOGGER.error(
+                f"Failed to set feature {feature} for appliance with id {pnc_id}"
+            )
             return
 
         await appliance.send_command(data)
         _LOGGER.debug(f"Set {feature} State to {state}")
+
+    async def ac_set_temperature(self, pnc_id: str, temp: float):
+        data = {"targetTemperatureC": temp}
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            _LOGGER.error(
+                f"Failed to set AC temperature for appliance with id {pnc_id}"
+            )
+            return
+
+        result = await appliance.send_command(data)
+        _LOGGER.debug(f"Set AC temperature: {result}")
+
+    async def ac_set_mode(self, pnc_id: str, mode: str):
+        data = {"mode": mode.upper()}
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            _LOGGER.error(f"Failed to set AC mode for appliance with id {pnc_id}")
+            return
+
+        result = await appliance.send_command(data)
+        _LOGGER.debug(f"Set AC mode: {result}")
+
+    async def ac_set_fan_mode(self, pnc_id: str, fan_mode: str):
+        data = {"fanSpeedSetting": fan_mode}
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            _LOGGER.error(f"Failed to set AC fan mode for appliance with id {pnc_id}")
+            return
+
+        result = await appliance.send_command(data)
+        _LOGGER.debug(f"Set AC fan mode: {result}")
+
+    async def ac_set_vertical_swing(self, pnc_id: str, state: str):
+        data = {"verticalSwing": state.upper()}
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            _LOGGER.error(
+                f"Failed to set AC vertical swing for appliance with id {pnc_id}"
+            )
+            return
+
+        result = await appliance.send_command(data)
+        _LOGGER.debug(f"Set AC vertical swing: {result}")
+
+    async def ac_set_sleep_mode(self, pnc_id: str, state: str):
+        data = {"sleepMode": state.upper()}
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            _LOGGER.error(f"Failed to set AC sleep mode for appliance with id {pnc_id}")
+            return
+
+        result = await appliance.send_command(data)
+        _LOGGER.debug(f"Set AC sleep mode: {result}")
+
+    async def ac_turn_on(self, pnc_id: str):
+        data = {"executeCommand": "ON"}
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            _LOGGER.error(f"Failed to turn on AC for appliance with id {pnc_id}")
+            return
+
+        result = await appliance.send_command(data)
+        _LOGGER.debug(f"Turn on AC: {result}")
+
+    async def ac_turn_off(self, pnc_id: str):
+        data = {"executeCommand": "OFF"}
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            _LOGGER.error(f"Failed to turn off AC for appliance with id {pnc_id}")
+            return
+
+        result = await appliance.send_command(data)
+        _LOGGER.debug(f"Turn off AC: {result}")
