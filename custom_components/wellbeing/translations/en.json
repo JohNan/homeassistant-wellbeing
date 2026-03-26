@@ -6,7 +6,8 @@
         "data": {
           "api_key": "API key",
           "refresh_token": "Refresh Token",
-          "access_token": "Access Token"
+          "access_token": "Access Token",
+          "stream": "Use Live Stream API instead of polling"
         }
       },
       "reauth_validate": {
@@ -35,7 +36,8 @@
           "scan_interval": "API update interval (seconds)",
           "binary_sensor": "Binary sensor activated",
           "sensor": "Sensor activated",
-          "switch": "Switch activated"
+          "switch": "Switch activated",
+          "stream": "Use Live Stream API instead of polling"
         }
       }
     }

@@ -19,7 +19,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.helpers.update_coordinator import UpdateFailed
 from .api import WellbeingApiClient
-from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, CONF_REFRESH_TOKEN
+from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, CONF_REFRESH_TOKEN, CONF_STREAM, DEFAULT_STREAM
 from .const import DOMAIN
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
@@ -38,7 +38,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     if hass.data.get(DOMAIN) is None:
         hass.data.setdefault(DOMAIN, {})
 
-    if entry.options.get(CONF_SCAN_INTERVAL):
+    if entry.options.get(CONF_STREAM, DEFAULT_STREAM):
+        update_interval = None
+    elif entry.options.get(CONF_SCAN_INTERVAL):
         update_interval = timedelta(seconds=entry.options[CONF_SCAN_INTERVAL])
     else:
         update_interval = timedelta(seconds=DEFAULT_SCAN_INTERVAL)
@@ -58,6 +60,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     )
 
     await coordinator.async_config_entry_first_refresh()
+
+    if entry.options.get(CONF_STREAM, DEFAULT_STREAM):
+        entry.async_create_background_task(hass, coordinator._listen_for_changes(), "wellbeing_stream")
 
     if not coordinator.last_update_success:
         raise ConfigEntryNotReady from coordinator.last_exception
@@ -104,6 +109,30 @@ class WellbeingDataUpdateCoordinator(DataUpdateCoordinator):
             return {"appliances": appliances}
         except Exception as exception:
             raise UpdateFailed(exception) from exception
+
+    async def _listen_for_changes(self):
+        """Listen to live stream for changes."""
+        async for event in self.api._hub.watch_appliances():
+            appliance_id = event.get("applianceId")
+            property_name = event.get("property")
+            value = event.get("value")
+
+            if not appliance_id or not property_name:
+                continue
+
+            appliance = self.api._api_appliances.get(appliance_id)
+            if appliance is not None:
+                if property_name in ["status", "connectionState"]:
+                    appliance.state_data[property_name] = value
+                else:
+                    if "properties" not in appliance.state_data:
+                        appliance.state_data["properties"] = {}
+                    if "reported" not in appliance.state_data["properties"]:
+                        appliance.state_data["properties"]["reported"] = {}
+                    appliance.state_data["properties"]["reported"][property_name] = value
+
+                _LOGGER.debug(f"Live stream update for {appliance_id}: {property_name} = {value}")
+                self.async_set_updated_data(self.data)
 
 
 class WellBeingTokenManager(TokenManager):

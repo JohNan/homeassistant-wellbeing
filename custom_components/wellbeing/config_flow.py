@@ -14,7 +14,7 @@ from pyelectroluxgroup.api import ElectroluxHubAPI
 from pyelectroluxgroup.token_manager import TokenManager
 
 from . import CONF_REFRESH_TOKEN
-from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, CONFIG_FLOW_TITLE
+from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, CONFIG_FLOW_TITLE, CONF_STREAM, DEFAULT_STREAM
 from .const import DOMAIN
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
@@ -55,7 +55,9 @@ class WellbeingFlowHandler(ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
                 self._errors["base"] = "auth"
                 return await self._show_config_form(user_input)
 
-            return self.async_create_entry(title=CONFIG_FLOW_TITLE, data=user_input)
+            options = {CONF_STREAM: user_input.pop(CONF_STREAM, DEFAULT_STREAM)}
+
+            return self.async_create_entry(title=CONFIG_FLOW_TITLE, data=user_input, options=options)
 
         return await self._show_config_form(user_input)
 
@@ -124,6 +126,7 @@ class WellbeingFlowHandler(ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
                     vol.Required(CONF_API_KEY): str,
                     vol.Required(CONF_ACCESS_TOKEN): str,
                     vol.Required(CONF_REFRESH_TOKEN): str,
+                    vol.Optional(CONF_STREAM, default=DEFAULT_STREAM): bool,
                 }
             ),
             description_placeholders={
@@ -180,6 +183,12 @@ class WellbeingOptionsFlowHandler(config_entries.OptionsFlow):
                             CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
                         ),
                     ): cv.positive_int,
+                    vol.Optional(
+                        CONF_STREAM,
+                        default=self.config_entry.options.get(
+                            CONF_STREAM, DEFAULT_STREAM
+                        ),
+                    ): bool,
                 }
             ),
         )

@@ -11,7 +11,9 @@ ICON = "mdi:format-quote-close"
 CONF_ENABLED = "enabled"
 CONF_SCAN_INTERVAL = "scan_interval"
 CONF_REFRESH_TOKEN = "refresh_token"
+CONF_STREAM = "stream"
 
 # Defaults
 DEFAULT_NAME = DOMAIN
 DEFAULT_SCAN_INTERVAL = 60
+DEFAULT_STREAM = False
