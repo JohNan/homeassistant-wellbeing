@@ -120,29 +120,8 @@ class WellbeingDataUpdateCoordinator(DataUpdateCoordinator):
             if not appliance_id or not property_name:
                 continue
 
-            appliance = self.api._api_appliances.get(appliance_id)
-            if appliance is not None:
-                if property_name in ["status", "connectionState"]:
-                    appliance.state_data[property_name] = value
-                else:
-                    if "properties" not in appliance.state_data:
-                        appliance.state_data["properties"] = {}
-                    if "reported" not in appliance.state_data["properties"]:
-                        appliance.state_data["properties"]["reported"] = {}
-                    appliance.state_data["properties"]["reported"][property_name] = value
-
-                _LOGGER.debug(f"Live stream update for {appliance_id}: {property_name} = {value}")
-
-                ha_appliance = self.data["appliances"].get_appliance(appliance_id)
-                if ha_appliance is not None:
-                    data = appliance.state
-                    data["status"] = appliance.state_data.get("status", "unknown")
-                    data["connectionState"] = appliance.state_data.get(
-                        "connectionState", "unknown"
-                    )
-                    ha_appliance.setup(data, appliance.capabilities_data)
-
-                self.async_set_updated_data({"appliances": self.data["appliances"]})
+            if self.api.update_appliance_state(self.data["appliances"], appliance_id, property_name, value):
+                self.async_set_updated_data(self.data)
 
 
 class WellBeingTokenManager(TokenManager):
