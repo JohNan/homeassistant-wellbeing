@@ -142,7 +142,7 @@ class WellbeingDataUpdateCoordinator(DataUpdateCoordinator):
                     )
                     ha_appliance.setup(data, appliance.capabilities_data)
 
-                self.async_set_updated_data(self.data)
+                self.async_set_updated_data({"appliances": self.data["appliances"]})
 
 
 class WellBeingTokenManager(TokenManager):
