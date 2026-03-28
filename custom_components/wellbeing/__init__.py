@@ -132,6 +132,16 @@ class WellbeingDataUpdateCoordinator(DataUpdateCoordinator):
                     appliance.state_data["properties"]["reported"][property_name] = value
 
                 _LOGGER.debug(f"Live stream update for {appliance_id}: {property_name} = {value}")
+
+                ha_appliance = self.data["appliances"].get_appliance(appliance_id)
+                if ha_appliance is not None:
+                    data = appliance.state
+                    data["status"] = appliance.state_data.get("status", "unknown")
+                    data["connectionState"] = appliance.state_data.get(
+                        "connectionState", "unknown"
+                    )
+                    ha_appliance.setup(data, appliance.capabilities_data)
+
                 self.async_set_updated_data(self.data)
 
 
