@@ -38,12 +38,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     if hass.data.get(DOMAIN) is None:
         hass.data.setdefault(DOMAIN, {})
 
-    if entry.options.get(CONF_STREAM, DEFAULT_STREAM):
-        update_interval = None
-    elif entry.options.get(CONF_SCAN_INTERVAL):
-        update_interval = timedelta(seconds=entry.options[CONF_SCAN_INTERVAL])
+    if entry.options.get(CONF_SCAN_INTERVAL):
+        base_interval = entry.options[CONF_SCAN_INTERVAL]
     else:
-        update_interval = timedelta(seconds=DEFAULT_SCAN_INTERVAL)
+        base_interval = DEFAULT_SCAN_INTERVAL
+
+    if entry.options.get(CONF_STREAM, DEFAULT_STREAM):
+        update_interval = timedelta(seconds=base_interval * 5)
+    else:
+        update_interval = timedelta(seconds=base_interval)
 
     token_manager = WellBeingTokenManager(hass, entry)
     try:
