@@ -19,7 +19,13 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.helpers.update_coordinator import UpdateFailed
 from .api import WellbeingApiClient
-from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, CONF_REFRESH_TOKEN, CONF_STREAM, DEFAULT_STREAM
+from .const import (
+    CONF_SCAN_INTERVAL,
+    DEFAULT_SCAN_INTERVAL,
+    CONF_REFRESH_TOKEN,
+    CONF_STREAM,
+    DEFAULT_STREAM,
+)
 from .const import DOMAIN
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
@@ -65,7 +71,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     await coordinator.async_config_entry_first_refresh()
 
     if entry.options.get(CONF_STREAM, DEFAULT_STREAM):
-        entry.async_create_background_task(hass, coordinator._listen_for_changes(), "wellbeing_stream")
+        entry.async_create_background_task(
+            hass, coordinator._listen_for_changes(), "wellbeing_stream"
+        )
 
     if not coordinator.last_update_success:
         raise ConfigEntryNotReady from coordinator.last_exception
@@ -123,7 +131,9 @@ class WellbeingDataUpdateCoordinator(DataUpdateCoordinator):
             if not appliance_id or not property_name:
                 continue
 
-            if self.api.update_appliance_state(self.data["appliances"], appliance_id, property_name, value):
+            if self.api.update_appliance_state(
+                self.data["appliances"], appliance_id, property_name, value
+            ):
                 self.async_set_updated_data(self.data)
 
 
