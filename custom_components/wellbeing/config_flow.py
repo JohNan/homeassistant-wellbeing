@@ -14,7 +14,13 @@ from pyelectroluxgroup.api import ElectroluxHubAPI
 from pyelectroluxgroup.token_manager import TokenManager
 
 from . import CONF_REFRESH_TOKEN
-from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, CONFIG_FLOW_TITLE, CONF_STREAM, DEFAULT_STREAM
+from .const import (
+    CONF_SCAN_INTERVAL,
+    DEFAULT_SCAN_INTERVAL,
+    CONFIG_FLOW_TITLE,
+    CONF_STREAM,
+    DEFAULT_STREAM,
+)
 from .const import DOMAIN
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
@@ -57,7 +63,9 @@ class WellbeingFlowHandler(ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
 
             options = {CONF_STREAM: user_input.pop(CONF_STREAM, DEFAULT_STREAM)}
 
-            return self.async_create_entry(title=CONFIG_FLOW_TITLE, data=user_input, options=options)
+            return self.async_create_entry(
+                title=CONFIG_FLOW_TITLE, data=user_input, options=options
+            )
 
         return await self._show_config_form(user_input)
 
