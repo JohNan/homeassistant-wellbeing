@@ -104,6 +104,7 @@ class Model(str, Enum):
     Robot700series = "700series"  # 700series vacuum robot series
     UltimateHome700 = "UltimateHome 700"  # Dehumidifier
     VacuumHygienic700 = "Gordias"  # HYGIENIC700
+    Cybele = "Cybele"
     COMFORT600 = "COMFORT600"
     AZUL = "AZUL"
 
@@ -652,7 +653,11 @@ class Appliance:
     @property
     def battery_range(self) -> tuple[int, int]:
         match Model(self.model):
-            case Model.Robot700series.value | Model.VacuumHygienic700.value:
+            case (
+                Model.Robot700series.value
+                | Model.VacuumHygienic700.value
+                | Model.Cybele.value
+            ):
                 return 1, 100
             case Model.PUREi9.value:
                 return (
@@ -665,7 +670,11 @@ class Appliance:
     def vacuum_fan_speed_list(self) -> list[str]:
         """Return the available fan speeds for the vacuum cleaner."""
         match Model(self.model):
-            case Model.Robot700series.value | Model.VacuumHygienic700.value:
+            case (
+                Model.Robot700series.value
+                | Model.VacuumHygienic700.value
+                | Model.Cybele.value
+            ):
                 return list(FAN_SPEEDS_700SERIES.keys())
             case Model.PUREi9.value:
                 if hasattr(self, "power_mode"):
@@ -679,7 +688,11 @@ class Appliance:
     def vacuum_fan_speed(self) -> str | None:
         """Return the current fan speed of the vacuum cleaner."""
         match Model(self.model):
-            case Model.Robot700series.value | Model.VacuumHygienic700.value:
+            case (
+                Model.Robot700series.value
+                | Model.VacuumHygienic700.value
+                | Model.Cybele.value
+            ):
                 return next(
                     (
                         speed
@@ -713,7 +726,11 @@ class Appliance:
     def vacuum_set_fan_speed(self, speed: str) -> None:
         """Set the current fan speed of the vacuum cleaner."""
         match Model(self.model):
-            case Model.Robot700series.value | Model.VacuumHygienic700.value:
+            case (
+                Model.Robot700series.value
+                | Model.VacuumHygienic700.value
+                | Model.Cybele.value
+            ):
                 self.vacuum_mode = FAN_SPEEDS_700SERIES.get(speed, self.vacuum_mode)
             case Model.PUREi9.value:
                 if hasattr(self, "power_mode"):
@@ -865,7 +882,11 @@ class WellbeingApiClient:
             return
         data = {}
         match Model(appliance.type):
-            case Model.Robot700series.value | Model.VacuumHygienic700.value:
+            case (
+                Model.Robot700series.value
+                | Model.VacuumHygienic700.value
+                | Model.Cybele.value
+            ):
                 data = {"cleaningCommand": "startGlobalClean"}
             case Model.PUREi9.value:
                 data = {"CleaningCommand": "play"}
@@ -882,7 +903,11 @@ class WellbeingApiClient:
             return
         data = {}
         match Model(appliance.type):
-            case Model.Robot700series.value | Model.VacuumHygienic700.value:
+            case (
+                Model.Robot700series.value
+                | Model.VacuumHygienic700.value
+                | Model.Cybele.value
+            ):
                 data = {"cleaningCommand": "stopClean"}
             case Model.PUREi9.value:
                 data = {"CleaningCommand": "stop"}
@@ -899,7 +924,11 @@ class WellbeingApiClient:
             return
         data = {}
         match Model(appliance.type):
-            case Model.Robot700series.value | Model.VacuumHygienic700.value:
+            case (
+                Model.Robot700series.value
+                | Model.VacuumHygienic700.value
+                | Model.Cybele.value
+            ):
                 data = {"cleaningCommand": "pauseClean"}
             case Model.PUREi9.value:
                 data = {"CleaningCommand": "pause"}
@@ -916,7 +945,11 @@ class WellbeingApiClient:
             return
         data = {}
         match Model(appliance.type):
-            case Model.Robot700series.value | Model.VacuumHygienic700.value:
+            case (
+                Model.Robot700series.value
+                | Model.VacuumHygienic700.value
+                | Model.Cybele.value
+            ):
                 data = {"cleaningCommand": "startGoToCharger"}
             case Model.PUREi9.value:
                 data = {"CleaningCommand": "home"}
@@ -931,7 +964,11 @@ class WellbeingApiClient:
             return
         data = dict[str, str | int | None]()
         match Model(api_appliance.type):
-            case Model.Robot700series.value | Model.VacuumHygienic700.value:
+            case (
+                Model.Robot700series.value
+                | Model.VacuumHygienic700.value
+                | Model.Cybele.value
+            ):
                 data = {"vacuumMode": FAN_SPEEDS_700SERIES.get(speed)}
             case Model.PUREi9.value:
                 if hasattr(appliance, "power_mode"):
@@ -952,6 +989,7 @@ class WellbeingApiClient:
         if (
             appliance.type == Model.Robot700series.value
             or appliance.type == Model.VacuumHygienic700.value
+            or appliance.type == Model.Cybele.value
         ):
             api_maps = await appliance.async_get_memory_maps()
             api_map = api_maps[0] if api_maps else None  # Default to the first map
@@ -986,6 +1024,7 @@ class WellbeingApiClient:
         if (
             appliance.type == Model.Robot700series.value
             or appliance.type == Model.VacuumHygienic700.value
+            or appliance.type == Model.Cybele.value
         ):
             api_maps = await appliance.async_get_memory_maps()
             api_map = api_maps[0] if api_maps else None
@@ -1052,7 +1091,10 @@ class WellbeingApiClient:
             )
             return
 
-        if command == "clean_room" and appliance.type == Model.VacuumHygienic700.value:
+        if command == "clean_room" and appliance.type in [
+            Model.VacuumHygienic700.value,
+            Model.Cybele.value,
+        ]:
             if params is None:
                 raise ServiceValidationError(
                     f"Parameters are required for command '{command}'"
