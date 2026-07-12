@@ -135,7 +135,12 @@ class WellbeingDataUpdateCoordinator(DataUpdateCoordinator):
             if self.api.update_appliance_state(
                 self.data["appliances"], appliance_id, property_name, value
             ):
-                self.async_set_updated_data(self.data)
+                # Notify entities without async_set_updated_data: that would
+                # reset the polling schedule, and a steady trickle of stream
+                # events (e.g. battery updates) would then postpone polling
+                # indefinitely, freezing all properties that only arrive via
+                # polling (such as the vacuum map data).
+                self.async_update_listeners()
 
 
 class WellBeingTokenManager(TokenManager):
