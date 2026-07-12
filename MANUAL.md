@@ -4,6 +4,36 @@ This text contains manual entries for non-obvious features of specific appliance
 
 ## Robotic Vacuum Cleaners (RVC)
 
+### Vacuum map camera
+
+Robot vacuums whose appliance state reports dynamic map data (verified on the
+PUREi9.2) get a camera entity showing the map of the latest cleaning session:
+the covered area, the cleaning path, the charger and — while the robot is
+moving — the robot itself. The image updates on every API update, so it shows
+live progress during a cleaning session.
+
+The camera can be used with a plain picture-entity card, or with
+[xiaomi-vacuum-map-card](https://github.com/PiotrMachowski/lovelace-xiaomi-vacuum-map-card):
+
+```yaml
+type: custom:xiaomi-vacuum-map-card
+entity: vacuum.your_robot
+vacuum_platform: default
+map_source:
+  camera: camera.your_robot_map
+calibration_source:
+  camera: true
+```
+
+The camera exposes a `calibration_points` attribute mapping the vacuum
+coordinate system (metres, persistent map frame) to image pixels, which the
+card consumes via `calibration_source: camera: true`.
+
+The map orientation can be adjusted with the "Vacuum map rotation" integration
+option (degrees counter-clockwise), for example to match the orientation shown
+in the Electrolux app.
+
+
 ### PUREi9
 
 The PUREi9.2 RVC supports the action `vacuum.send_command` with the command `clean_zones`, which allows for zone cleaning. The command expects two parameters: `map`, which is the name of a map (as named in the Wellbeing app), and `zones`, which is a list of zones to be cleaned. A zone in the list can either be the name of a zone to be cleaned (as a single string) or a dictionary containing the required key `zone` and an optional key `fan_speed` with values `power`, `quiet`, or `smart` to be used for the zone. If `fan_speed` is not specified, the default fan speed specified for that zone will be used.

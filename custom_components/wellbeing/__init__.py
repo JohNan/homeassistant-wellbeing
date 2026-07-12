@@ -30,6 +30,7 @@ from .const import DOMAIN
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 PLATFORMS = [
+    Platform.CAMERA,
     Platform.SENSOR,
     Platform.FAN,
     Platform.BINARY_SENSOR,
