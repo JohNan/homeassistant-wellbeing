@@ -8,7 +8,9 @@ from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.const import (
+    UnitOfArea,
     UnitOfTemperature,
+    UnitOfTime,
     PERCENTAGE,
     CONCENTRATION_PARTS_PER_MILLION,
     CONCENTRATION_PARTS_PER_BILLION,
@@ -137,6 +139,9 @@ class ApplianceEntity:
         state_class: SensorStateClass | str | None = None,
     ) -> None:
         self.attr = attr
+        # The state attribute the entity reads; attr stays the unique
+        # identity even when several entities share one source attribute.
+        self.source_attr = attr
         self.name = name
         self.device_class = device_class
         self.entity_category = entity_category
@@ -144,7 +149,7 @@ class ApplianceEntity:
         self._state = None
 
     def setup(self, data):
-        self._state = data[self.attr]
+        self._state = data[self.source_attr]
         return self
 
     def clear_state(self):
@@ -218,6 +223,56 @@ class ApplianceCamera(ApplianceEntity):
 
     def __init__(self, name, attr) -> None:
         super().__init__(name, attr)
+
+
+class ApplianceConsumableSensor(ApplianceSensor):
+    """Remaining life of a consumable, in percent.
+
+    The API reports usage in square metres since the consumable was last
+    reset; the rated lifetimes are not exposed, so they are hard coded per
+    model (reverse engineered from the percentages shown in the Electrolux
+    app for a PUREi9.2).
+    """
+
+    def __init__(self, name, attr, rated_sqm) -> None:
+        super().__init__(
+            name,
+            attr,
+            unit=PERCENTAGE,
+            entity_category=EntityCategory.DIAGNOSTIC,
+            state_class=SensorStateClass.MEASUREMENT,
+        )
+        self.rated_sqm = rated_sqm
+
+    def setup(self, data):
+        self._state = max(0, round(100 * (1 - float(data[self.source_attr]) / self.rated_sqm)))
+        return self
+
+
+class ApplianceCleaningSessionSensor(ApplianceSensor):
+    """Sensor reading one value from the vacuum's reported cleaningSession."""
+
+    def __init__(
+        self,
+        name,
+        attr,
+        session_key,
+        unit="",
+        device_class=None,
+        state_class: SensorStateClass | str | None = None,
+        transform=None,
+    ) -> None:
+        super().__init__(name, attr, unit, device_class, state_class=state_class)
+        self.source_attr = "cleaningSession"
+        self.session_key = session_key
+        self.transform = transform
+
+    def setup(self, data):
+        value = (data.get(self.source_attr) or {}).get(self.session_key)
+        if value is not None and self.transform is not None:
+            value = self.transform(value)
+        self._state = value
+        return self
 
 
 class Appliance:
@@ -397,6 +452,26 @@ class Appliance:
                 name="Map",
                 attr="mapData",
             ),
+            # Only created for robots whose state reports cleaningSession
+            ApplianceCleaningSessionSensor(
+                name="Cleaned Area",
+                attr="cleanedArea",
+                session_key="areaCovered",
+                unit=UnitOfArea.SQUARE_METERS,
+                device_class=SensorDeviceClass.AREA,
+                state_class=SensorStateClass.MEASUREMENT,
+                transform=lambda value: round(float(value), 1),
+            ),
+            ApplianceCleaningSessionSensor(
+                name="Cleaning Time",
+                attr="cleaningTime",
+                session_key="cleaningDuration",
+                unit=UnitOfTime.SECONDS,
+                device_class=SensorDeviceClass.DURATION,
+                state_class=SensorStateClass.MEASUREMENT,
+                # cleaningDuration is reported in 100 ns ticks
+                transform=lambda value: round(int(value) / 1e7),
+            ),
         ]
 
         vacuum_purei9_entities = [
@@ -413,6 +488,21 @@ class Appliance:
                 name="Robot Status",
                 attr="robotStatus",
                 device_class=SensorDeviceClass.ENUM,
+            ),
+            ApplianceConsumableSensor(
+                name="Main Brush",
+                attr="main_brush_sqm",
+                rated_sqm=3000,
+            ),
+            ApplianceConsumableSensor(
+                name="Side Brush",
+                attr="side_brush_sqm",
+                rated_sqm=1000,
+            ),
+            ApplianceConsumableSensor(
+                name="Filter",
+                attr="filter_sqm",
+                rated_sqm=1000,
             ),
         ]
 
@@ -622,7 +712,7 @@ class Appliance:
         self.entities = [
             entity.setup(data)
             for entity in Appliance._create_entities(data)
-            if entity.attr in data
+            if entity.source_attr in data
         ]
 
     @property

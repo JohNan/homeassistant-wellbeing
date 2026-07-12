@@ -36,6 +36,13 @@ in the Electrolux app.
 
 ### PUREi9
 
+Consumable sensors (Main Brush, Side Brush, Filter) show remaining life in
+percent. The API only reports usage in square metres since the last reset;
+the rated lifetimes (3000 m² for the main brush, 1000 m² for the side brush
+and the filter) are not exposed by the API and were reverse engineered from
+the percentages shown in the Electrolux app. Counters can only be reset from
+the app.
+
 The PUREi9.2 RVC supports the action `vacuum.send_command` with the command `clean_zones`, which allows for zone cleaning. The command expects two parameters: `map`, which is the name of a map (as named in the Wellbeing app), and `zones`, which is a list of zones to be cleaned. A zone in the list can either be the name of a zone to be cleaned (as a single string) or a dictionary containing the required key `zone` and an optional key `fan_speed` with values `power`, `quiet`, or `smart` to be used for the zone. If `fan_speed` is not specified, the default fan speed specified for that zone will be used.
 
 #### Example 1
