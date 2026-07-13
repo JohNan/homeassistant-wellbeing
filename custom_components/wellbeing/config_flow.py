@@ -18,7 +18,9 @@ from .const import (
     CONF_SCAN_INTERVAL,
     DEFAULT_SCAN_INTERVAL,
     CONFIG_FLOW_TITLE,
+    CONF_MAP_ROTATION,
     CONF_STREAM,
+    DEFAULT_MAP_ROTATION,
     DEFAULT_STREAM,
 )
 from .const import DOMAIN
@@ -197,6 +199,12 @@ class WellbeingOptionsFlowHandler(config_entries.OptionsFlow):
                             CONF_STREAM, DEFAULT_STREAM
                         ),
                     ): bool,
+                    vol.Optional(
+                        CONF_MAP_ROTATION,
+                        default=self.config_entry.options.get(
+                            CONF_MAP_ROTATION, DEFAULT_MAP_ROTATION
+                        ),
+                    ): vol.All(vol.Coerce(int), vol.Range(min=0, max=359)),
                 }
             ),
         )

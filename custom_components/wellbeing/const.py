@@ -12,8 +12,10 @@ CONF_ENABLED = "enabled"
 CONF_SCAN_INTERVAL = "scan_interval"
 CONF_REFRESH_TOKEN = "refresh_token"
 CONF_STREAM = "stream"
+CONF_MAP_ROTATION = "map_rotation"
 
 # Defaults
 DEFAULT_NAME = DOMAIN
 DEFAULT_SCAN_INTERVAL = 60
 DEFAULT_STREAM = False
+DEFAULT_MAP_ROTATION = 0

@@ -213,6 +213,13 @@ class ApplianceClimate(ApplianceEntity):
         super().__init__(name, attr)
 
 
+class ApplianceCamera(ApplianceEntity):
+    entity_type: int = Platform.CAMERA
+
+    def __init__(self, name, attr) -> None:
+        super().__init__(name, attr)
+
+
 class Appliance:
     serialNumber: str
     brand: str
@@ -222,6 +229,7 @@ class Appliance:
     entities: list
     capabilities: dict
     model: Model
+    reported_state: dict
 
     def __init__(self, name, pnc_id, model) -> None:
         self.model = Model(model)
@@ -383,6 +391,11 @@ class Appliance:
                 attr="batteryStatus",
                 device_class=SensorDeviceClass.BATTERY,
                 unit=PERCENTAGE,
+            ),
+            # Only created for robots whose state reports dynamic map data
+            ApplianceCamera(
+                name="Map",
+                attr="mapData",
             ),
         ]
 
@@ -582,6 +595,7 @@ class Appliance:
         self.mode = mode
 
     def setup(self, data, capabilities):
+        self.reported_state = data
         self.firmware = ""
         if "FrmVer_NIU" in data:
             self.firmware = data.get("FrmVer_NIU")

@@ -37,7 +37,8 @@
           "binary_sensor": "Binary sensor activated",
           "sensor": "Sensor activated",
           "switch": "Switch activated",
-          "stream": "Use Live Stream API instead of polling"
+          "stream": "Use Live Stream API instead of polling",
+          "map_rotation": "Vacuum map rotation (degrees counter-clockwise)"
         }
       }
     }
