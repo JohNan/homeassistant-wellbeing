@@ -168,11 +168,8 @@ class WellBeingConfigFlowTokenManager(TokenManager):
         super().update(access_token, refresh_token, api_key)
 
 
-class WellbeingOptionsFlowHandler(config_entries.OptionsFlow):
+class WellbeingOptionsFlowHandler(config_entries.OptionsFlowWithReload):
     """Config flow options handler for wellbeing."""
-
-    def __init__(self):
-        """Initialize HACS options flow."""
 
     async def async_step_init(self, user_input=None):  # pylint: disable=unused-argument
         """Manage the options."""

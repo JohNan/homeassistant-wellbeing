@@ -54,7 +54,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # refreshes - but the stream does not carry every property (e.g. the
     # vacuum map data only arrives via polling), so while a vacuum is active
     # the coordinator polls at the base interval to follow the cleaning session.
-    if entry.options.get(CONF_STREAM, DEFAULT_STREAM):
+    use_stream = entry.options.get(CONF_STREAM, DEFAULT_STREAM)
+    if use_stream:
         update_interval = timedelta(seconds=base_interval * 5)
     else:
         update_interval = timedelta(seconds=base_interval)
@@ -68,7 +69,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     except Exception as exception:
         raise ConfigEntryAuthFailed("Failed to setup API") from exception
 
-    client = WellbeingApiClient(hub)
+    client = WellbeingApiClient(hub, use_stream=use_stream)
 
     coordinator = WellbeingDataUpdateCoordinator(
         hass,
@@ -79,7 +80,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     await coordinator.async_config_entry_first_refresh()
 
-    if entry.options.get(CONF_STREAM, DEFAULT_STREAM):
+    if use_stream:
         entry.async_create_background_task(
             hass, coordinator._listen_for_changes(), "wellbeing_stream"
         )
@@ -91,7 +92,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    entry.add_update_listener(async_reload_entry)
     return True
 
 
@@ -102,11 +102,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN].pop(entry.entry_id)
 
     return unload_ok
-
-
-async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload the config entry when it changed."""
-    await hass.config_entries.async_reload(entry.entry_id)
 
 
 class WellbeingDataUpdateCoordinator(DataUpdateCoordinator):
@@ -143,9 +138,15 @@ class WellbeingDataUpdateCoordinator(DataUpdateCoordinator):
         """Whether any robot vacuum is currently on a cleaning session."""
         from homeassistant.components.vacuum import VacuumActivity
 
-        from .vacuum import VACUUM_ACTIVITIES  # local import, vacuum.py imports this module
+        from .vacuum import (
+            VACUUM_ACTIVITIES,
+        )  # local import, vacuum.py imports this module
 
-        active = {VacuumActivity.CLEANING, VacuumActivity.RETURNING, VacuumActivity.PAUSED}
+        active = {
+            VacuumActivity.CLEANING,
+            VacuumActivity.RETURNING,
+            VacuumActivity.PAUSED,
+        }
         return any(
             VACUUM_ACTIVITIES.get(entity.state) in active
             for appliance in appliances.appliances.values()
@@ -190,14 +191,14 @@ class WellBeingTokenManager(TokenManager):
         _LOGGER.debug(f"Access token: {self._mask_access_token(access_token)}")
         _LOGGER.debug(f"Refresh token: {self._mask_access_token(refresh_token)}")
 
-        self._hass.config_entries.async_update_entry(
-            self._entry,
-            data={
-                CONF_API_KEY: self.api_key,
-                CONF_REFRESH_TOKEN: refresh_token,
-                CONF_ACCESS_TOKEN: access_token,
-            },
-        )
+        data = {
+            **self._entry.data,
+            CONF_API_KEY: self.api_key,
+            CONF_REFRESH_TOKEN: refresh_token,
+            CONF_ACCESS_TOKEN: access_token,
+        }
+        if data != self._entry.data:
+            self._hass.config_entries.async_update_entry(self._entry, data=data)
 
     @staticmethod
     def _mask_access_token(token: str):
