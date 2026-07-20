@@ -245,7 +245,9 @@ class ApplianceConsumableSensor(ApplianceSensor):
         self.rated_sqm = rated_sqm
 
     def setup(self, data):
-        self._state = max(0, round(100 * (1 - float(data[self.source_attr]) / self.rated_sqm)))
+        self._state = max(
+            0, round(100 * (1 - float(data[self.source_attr]) / self.rated_sqm))
+        )
         return self
 
 
@@ -852,11 +854,12 @@ class Appliances:
 
 
 class WellbeingApiClient:
-    def __init__(self, hub: ElectroluxHubAPI) -> None:
+    def __init__(self, hub: ElectroluxHubAPI, *, use_stream: bool) -> None:
         """Sample API Client."""
         self._api_appliances: dict[str, ApiAppliance] = {}
         self._hub = hub
         self._load_lock = asyncio.Lock()
+        self._use_stream = use_stream
         self._livestream_properties: dict[str, list[str]] = {}
 
     async def _ensure_loaded(self) -> None:
@@ -868,20 +871,21 @@ class WellbeingApiClient:
             appliances: list[ApiAppliance] = await self._hub.async_get_appliances()
             self._api_appliances = {appliance.id: appliance for appliance in appliances}
 
-            try:
-                livestream_configs = (
-                    await self._hub.async_get_livestream_configurations()
-                )
-                for appliance_config in livestream_configs.get("appliances", []):
-                    appliance_id = appliance_config.get("applianceId")
-                    properties = appliance_config.get("properties", [])
-                    if appliance_id and properties:
-                        self._livestream_properties[appliance_id] = properties
-                        _LOGGER.debug(
-                            f"Appliance {appliance_id} supports livestreaming for properties: {properties}"
-                        )
-            except Exception as e:
-                _LOGGER.warning(f"Failed to fetch livestream configurations: {e}")
+            if self._use_stream:
+                try:
+                    livestream_configs = (
+                        await self._hub.async_get_livestream_configurations()
+                    )
+                    for appliance_config in livestream_configs.get("appliances", []):
+                        appliance_id = appliance_config.get("applianceId")
+                        properties = appliance_config.get("properties", [])
+                        if appliance_id and properties:
+                            self._livestream_properties[appliance_id] = properties
+                            _LOGGER.debug(
+                                f"Appliance {appliance_id} supports livestreaming for properties: {properties}"
+                            )
+                except Exception as e:
+                    _LOGGER.warning(f"Failed to fetch livestream configurations: {e}")
 
     def update_appliance_state(self, ha_appliances, appliance_id, property_name, value):
         appliance = self._api_appliances.get(appliance_id)
