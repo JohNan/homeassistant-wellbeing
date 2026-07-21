@@ -71,7 +71,7 @@ class WellbeingFan(WellbeingEntity, FanEntity):
     @property
     def percentage(self):
         """Return the current speed percentage."""
-        if self._preset_mode == WorkMode.OFF:
+        if self.preset_mode == WorkMode.OFF:
             speed = 0
         else:
             speed = (
