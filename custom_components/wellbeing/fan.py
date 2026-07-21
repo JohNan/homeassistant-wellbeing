@@ -83,7 +83,7 @@ class WellbeingFan(WellbeingEntity, FanEntity):
 
     async def async_set_percentage(self, percentage: int) -> None:
         """Set the speed percentage of the fan."""
-        self._speed = math.floor(
+        self._speed = math.ceil(
             percentage_to_ranged_value(self._speed_range, percentage)
         )
         self.get_entity.clear_state()
@@ -151,7 +151,7 @@ class WellbeingFan(WellbeingEntity, FanEntity):
                 return
 
         # Proceed with the provided or default percentage
-        self._speed = math.floor(
+        self._speed = math.ceil(
             percentage_to_ranged_value(self._speed_range, percentage or 10)
         )
         self.get_appliance.set_mode(self._preset_mode)
