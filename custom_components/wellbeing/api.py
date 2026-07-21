@@ -969,7 +969,16 @@ class WellbeingApiClient:
             ):
                 continue
 
-            app = Appliance(appliance_name, appliance_id, model_name)
+            try:
+                app = Appliance(appliance_name, appliance_id, model_name)
+            except ValueError:
+                _LOGGER.warning(
+                    "Skipping unsupported %s appliance %s with model %s",
+                    appliance.device_type,
+                    appliance_id,
+                    model_name,
+                )
+                continue
             app.brand = appliance.brand
             app.serialNumber = appliance.serial_number
             app.device = appliance.device_type
