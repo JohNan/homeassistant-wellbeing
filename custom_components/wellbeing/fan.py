@@ -140,7 +140,11 @@ class WellbeingFan(WellbeingEntity, FanEntity):
     async def async_turn_on(
         self, percentage: int | None = None, preset_mode: str | None = None, **kwargs
     ) -> None:
-        self._preset_mode = self.get_appliance.work_mode_from_preset_mode(preset_mode)
+        self._preset_mode = (
+            WorkMode.MANUAL
+            if percentage is not None
+            else self.get_appliance.work_mode_from_preset_mode(preset_mode)
+        )
 
         # Handle incorrect percentage
         if percentage is not None and isinstance(percentage, str):
@@ -159,7 +163,7 @@ class WellbeingFan(WellbeingEntity, FanEntity):
 
         await self.api.set_work_mode(self.pnc_id, self._preset_mode)
 
-        if self._preset_mode != WorkMode.AUTO:
+        if self._preset_mode == WorkMode.MANUAL:
             await self.api.set_fan_speed(self.pnc_id, self._speed)
 
         await asyncio.sleep(10)
