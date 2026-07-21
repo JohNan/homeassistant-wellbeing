@@ -732,11 +732,15 @@ class Appliance:
 
     @property
     def speed_range(self) -> tuple[int, int]:
+        fan_speed = self.capabilities.get("Fanspeed", {})
+        minimum = fan_speed.get("min")
+        maximum = fan_speed.get("max")
+        if isinstance(minimum, int) and isinstance(maximum, int) and minimum <= maximum:
+            return minimum, maximum
+
         ## Electrolux Devices:
         if self.model == Model.Muju:
-            if self.mode is WorkMode.QUITE:
-                return 1, 2
-            return 1, 5
+            return 1, 3
         if self.model == Model.WELLA5:
             return 1, 5
         if self.model == Model.WELLA7:
