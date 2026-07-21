@@ -224,6 +224,10 @@ class ApplianceCamera(ApplianceEntity):
     def __init__(self, name, attr) -> None:
         super().__init__(name, attr)
 
+    def setup(self, data):
+        self._state = data.get(self.source_attr, {})
+        return self
+
 
 class ApplianceConsumableSensor(ApplianceSensor):
     """Remaining life of a consumable, in percent.
@@ -715,6 +719,10 @@ class Appliance:
             entity.setup(data)
             for entity in Appliance._create_entities(data)
             if entity.source_attr in data
+            or (
+                isinstance(entity, ApplianceCamera)
+                and self.device == "ROBOTIC_VACUUM_CLEANER"
+            )
         ]
 
     @property
