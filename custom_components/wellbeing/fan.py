@@ -71,7 +71,7 @@ class WellbeingFan(WellbeingEntity, FanEntity):
     @property
     def percentage(self):
         """Return the current speed percentage."""
-        if self._preset_mode == WorkMode.OFF:
+        if self.preset_mode == WorkMode.OFF:
             speed = 0
         else:
             speed = (
@@ -83,7 +83,7 @@ class WellbeingFan(WellbeingEntity, FanEntity):
 
     async def async_set_percentage(self, percentage: int) -> None:
         """Set the speed percentage of the fan."""
-        self._speed = math.floor(
+        self._speed = math.ceil(
             percentage_to_ranged_value(self._speed_range, percentage)
         )
         self.get_entity.clear_state()
@@ -140,7 +140,11 @@ class WellbeingFan(WellbeingEntity, FanEntity):
     async def async_turn_on(
         self, percentage: int | None = None, preset_mode: str | None = None, **kwargs
     ) -> None:
-        self._preset_mode = self.get_appliance.work_mode_from_preset_mode(preset_mode)
+        self._preset_mode = (
+            WorkMode.MANUAL
+            if percentage is not None
+            else self.get_appliance.work_mode_from_preset_mode(preset_mode)
+        )
 
         # Handle incorrect percentage
         if percentage is not None and isinstance(percentage, str):
@@ -151,7 +155,7 @@ class WellbeingFan(WellbeingEntity, FanEntity):
                 return
 
         # Proceed with the provided or default percentage
-        self._speed = math.floor(
+        self._speed = math.ceil(
             percentage_to_ranged_value(self._speed_range, percentage or 10)
         )
         self.get_appliance.set_mode(self._preset_mode)
@@ -159,7 +163,7 @@ class WellbeingFan(WellbeingEntity, FanEntity):
 
         await self.api.set_work_mode(self.pnc_id, self._preset_mode)
 
-        if self._preset_mode != WorkMode.AUTO:
+        if self._preset_mode == WorkMode.MANUAL:
             await self.api.set_fan_speed(self.pnc_id, self._speed)
 
         await asyncio.sleep(10)
