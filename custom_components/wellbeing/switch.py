@@ -30,23 +30,18 @@ class WellbeingSwitch(WellbeingEntity, SwitchEntity):
     def __init__(self, coordinator, config_entry, pnc_id, function):
         super().__init__(coordinator, config_entry, pnc_id, "binary_sensor", function)
         self._function = function
-        self._is_on = self.get_entity.state
 
     @property
     def is_on(self):
         """Return true if switch is on."""
-        return self._is_on
+        return self.get_entity.state
 
     async def async_turn_on(self, **kwargs):
         """Turn the switch on."""
         await self.coordinator.api.set_feature_state(self.pnc_id, self._function, True)
-        self._is_on = True
-        self.async_write_ha_state()
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs):
         """Turn the switch off."""
         await self.coordinator.api.set_feature_state(self.pnc_id, self._function, False)
-        self._is_on = False
-        self.async_write_ha_state()
         await self.coordinator.async_request_refresh()
