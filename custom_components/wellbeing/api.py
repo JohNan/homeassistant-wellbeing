@@ -200,15 +200,16 @@ class ApplianceBinary(ApplianceEntity):
 
     @property
     def state(self):
-        return self._state in [
-            "enabled",
-            True,
-            "Connected",
-            "on",
-            "ON",
-            "running",
-            "RUNNING",
-        ]
+        if isinstance(self._state, str):
+            return self._state.casefold() in {
+                "connected",
+                "enabled",
+                "on",
+                "running",
+                "true",
+                "yes",
+            }
+        return self._state is True or self._state == 1
 
 
 class ApplianceClimate(ApplianceEntity):
@@ -675,9 +676,10 @@ class Appliance:
         )
 
     def has_capability(self, capability) -> bool:
+        capability_data = self.capabilities.get(capability)
         return (
-            capability in self.capabilities
-            and self.capabilities[capability]["access"] == "readwrite"
+            isinstance(capability_data, dict)
+            and capability_data.get("access") == "readwrite"
         )
 
     def clear_mode(self):
