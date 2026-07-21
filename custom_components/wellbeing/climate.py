@@ -87,7 +87,10 @@ class WellbeingClimate(WellbeingEntity, ClimateEntity):
             is False
         ):
             return HVACMode.OFF
-        return HVAC_MODES.get(self.get_entity.state, HVACMode.AUTO)
+        mode = self.get_entity.state
+        return HVAC_MODES.get(
+            mode.lower() if isinstance(mode, str) else mode, HVACMode.AUTO
+        )
 
     @property
     def hvac_action(self) -> HVACAction | None:
