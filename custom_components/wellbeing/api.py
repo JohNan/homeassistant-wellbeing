@@ -1145,22 +1145,29 @@ class WellbeingApiClient:
             if not api_map:
                 _LOGGER.error(f"No memory maps found for appliance with id {pnc_id}")
                 return
-            rooms_payload = [
-                {
-                    "roomId": segment_id,
-                    "sweepMode": 0,
-                    "vacuumMode": "standard",
-                    "waterPumpRate": "off",
-                    "numberOfCleaningRepetitions": 1,
+            if appliance.type == Model.Cybele.value:
+                command_payload = {
+                    "mapCommand": "selectRoomsClean",
+                    "mapId": api_map.id,
+                    "type": 0,
+                    "roomInfo": [{"roomId": segment_id} for segment_id in segment_ids],
                 }
-                for segment_id in segment_ids
-            ]
-            command_payload = {
-                "mapCommand": "selectRoomsClean",
-                "mapId": api_map.id,
-                "type": 1,
-                "roomInfo": rooms_payload,
-            }
+            else:
+                command_payload = {
+                    "mapCommand": "selectRoomsClean",
+                    "mapId": api_map.id,
+                    "type": 1,
+                    "roomInfo": [
+                        {
+                            "roomId": segment_id,
+                            "sweepMode": 0,
+                            "vacuumMode": "standard",
+                            "waterPumpRate": "off",
+                            "numberOfCleaningRepetitions": 1,
+                        }
+                        for segment_id in segment_ids
+                    ],
+                }
             result = await appliance.send_command(command_payload)
             _LOGGER.debug(
                 f"Sent clean segments command with data: {command_payload}, result: {result}"
@@ -1205,10 +1212,7 @@ class WellbeingApiClient:
             )
             return
 
-        if command == "clean_room" and appliance.type in [
-            Model.VacuumHygienic700.value,
-            Model.Cybele.value,
-        ]:
+        if command == "clean_room" and appliance.type == Model.VacuumHygienic700.value:
             if params is None:
                 raise ServiceValidationError(
                     f"Parameters are required for command '{command}'"
@@ -1260,7 +1264,7 @@ class WellbeingApiClient:
 
                 repetitions = room["repetitions"]
                 if not isinstance(repetitions, int):
-                    repetitions
+                    repetitions = 1
                     _LOGGER.debug(
                         f"Repetition 1 used as {room['room_name']} input is invalid."
                     )
