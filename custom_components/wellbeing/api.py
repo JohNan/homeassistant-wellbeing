@@ -1,7 +1,6 @@
 """Sample API Client."""
 
 import asyncio
-import copy
 import logging
 from enum import StrEnum
 
@@ -868,13 +867,11 @@ class Appliances:
 
 
 class WellbeingApiClient:
-    def __init__(self, hub: ElectroluxHubAPI, *, use_stream: bool) -> None:
+    def __init__(self, hub: ElectroluxHubAPI) -> None:
         """Sample API Client."""
         self._api_appliances: dict[str, ApiAppliance] = {}
         self._hub = hub
         self._load_lock = asyncio.Lock()
-        self._use_stream = use_stream
-        self._livestream_properties: dict[str, list[str]] = {}
 
     async def _ensure_loaded(self) -> None:
         if self._api_appliances:
@@ -884,22 +881,6 @@ class WellbeingApiClient:
                 return
             appliances: list[ApiAppliance] = await self._hub.async_get_appliances()
             self._api_appliances = {appliance.id: appliance for appliance in appliances}
-
-            if self._use_stream:
-                try:
-                    livestream_configs = (
-                        await self._hub.async_get_livestream_configurations()
-                    )
-                    for appliance_config in livestream_configs.get("appliances", []):
-                        appliance_id = appliance_config.get("applianceId")
-                        properties = appliance_config.get("properties", [])
-                        if appliance_id and properties:
-                            self._livestream_properties[appliance_id] = properties
-                            _LOGGER.debug(
-                                f"Appliance {appliance_id} supports livestreaming for properties: {properties}"
-                            )
-                except Exception as e:
-                    _LOGGER.warning(f"Failed to fetch livestream configurations: {e}")
 
     def update_appliance_state(self, ha_appliances, appliance_id, property_name, value):
         appliance = self._api_appliances.get(appliance_id)
@@ -936,30 +917,7 @@ class WellbeingApiClient:
         await self._ensure_loaded()
         found_appliances = {}
         for appliance in (appliance for appliance in self._api_appliances.values()):
-            livestream_props = self._livestream_properties.get(appliance.id, [])
-            # Only restore livestream properties if the appliance is actually connected to the livestream
-            # The connection state is updated by the live stream itself
-            is_streaming = appliance.state_data.get("connectionState") == "Connected"
-
-            if not livestream_props or not is_streaming:
-                await appliance.async_update()
-            else:
-                original_state = copy.deepcopy(appliance.state_data)
-                await appliance.async_update()
-
-                if (
-                    "properties" in appliance.state_data
-                    and "reported" in appliance.state_data["properties"]
-                ):
-                    for prop in livestream_props:
-                        if (
-                            "properties" in original_state
-                            and "reported" in original_state["properties"]
-                            and prop in original_state["properties"]["reported"]
-                        ):
-                            appliance.state_data["properties"]["reported"][prop] = (
-                                original_state["properties"]["reported"][prop]
-                            )
+            await appliance.async_update()
 
             model_name = appliance.type
             appliance_id = appliance.id
