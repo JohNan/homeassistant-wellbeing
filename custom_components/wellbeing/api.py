@@ -108,7 +108,7 @@ class Model(str, Enum):
     VacuumHygienic700 = "Gordias"  # HYGIENIC700
     Cybele = "Cybele"
     COMFORT600 = "COMFORT600"
-    AZUL = "AZUL"
+    AZUL = "Azul"
 
 
 class WorkMode(str, Enum):
