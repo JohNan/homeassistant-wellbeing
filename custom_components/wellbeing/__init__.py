@@ -8,6 +8,7 @@ https://github.com/JohNan/homeassistant-wellbeing
 import logging
 from datetime import timedelta
 
+from aiohttp import ClientResponseError
 from pyelectroluxgroup.api import ElectroluxHubAPI
 from pyelectroluxgroup.token_manager import TokenManager
 
@@ -29,6 +30,7 @@ from .const import (
 from .const import DOMAIN
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
+AUTH_ERROR_STATUSES = {401, 403}
 PLATFORMS = [
     Platform.CAMERA,
     Platform.SENSOR,
@@ -75,6 +77,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         hass,
         client=client,
         update_interval=update_interval,
+        config_entry=entry,
         active_update_interval=active_update_interval,
     )
 
@@ -112,13 +115,20 @@ class WellbeingDataUpdateCoordinator(DataUpdateCoordinator):
         hass: HomeAssistant,
         client: WellbeingApiClient,
         update_interval: timedelta,
+        config_entry: ConfigEntry,
         active_update_interval: timedelta | None = None,
     ) -> None:
         """Initialize."""
         self.api = client
         self._idle_update_interval = update_interval
         self._active_update_interval = active_update_interval or update_interval
-        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=update_interval)
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=DOMAIN,
+            update_interval=update_interval,
+            config_entry=config_entry,
+        )
 
     async def _async_update_data(self):
         """Update data via library."""
@@ -131,6 +141,8 @@ class WellbeingDataUpdateCoordinator(DataUpdateCoordinator):
             )
             return {"appliances": appliances}
         except Exception as exception:
+            if _is_authentication_error(exception):
+                raise ConfigEntryAuthFailed from exception
             raise UpdateFailed(exception) from exception
 
     @staticmethod
@@ -210,3 +222,20 @@ class WellBeingTokenManager(TokenManager):
             return token[:2] + "*****" + token[-2:]
         else:
             return token[:5] + "*****" + token[-5:]
+
+
+def _is_authentication_error(exception: BaseException) -> bool:
+    """Return whether an exception chain contains an HTTP auth failure."""
+    seen: set[int] = set()
+    current: BaseException | None = exception
+
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if (
+            isinstance(current, ClientResponseError)
+            and current.status in AUTH_ERROR_STATUSES
+        ):
+            return True
+        current = current.__cause__ or current.__context__
+
+    return False
