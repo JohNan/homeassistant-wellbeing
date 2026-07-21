@@ -64,7 +64,7 @@ class WellbeingEntity(CoordinatorEntity):
             "capabilities": [
                 key
                 for key, value in self.get_appliance.capabilities.items()
-                if value["access"] == "readwrite"
+                if isinstance(value, dict) and value.get("access") == "readwrite"
             ],
         }
 

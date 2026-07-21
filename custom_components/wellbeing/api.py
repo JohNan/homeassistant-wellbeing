@@ -108,7 +108,7 @@ class Model(str, Enum):
     VacuumHygienic700 = "Gordias"  # HYGIENIC700
     Cybele = "Cybele"
     COMFORT600 = "COMFORT600"
-    AZUL = "AZUL"
+    AZUL = "Azul"
 
 
 class WorkMode(str, Enum):
@@ -200,15 +200,16 @@ class ApplianceBinary(ApplianceEntity):
 
     @property
     def state(self):
-        return self._state in [
-            "enabled",
-            True,
-            "Connected",
-            "on",
-            "ON",
-            "running",
-            "RUNNING",
-        ]
+        if isinstance(self._state, str):
+            return self._state.casefold() in {
+                "connected",
+                "enabled",
+                "on",
+                "running",
+                "true",
+                "yes",
+            }
+        return self._state is True or self._state == 1
 
 
 class ApplianceClimate(ApplianceEntity):
@@ -675,9 +676,10 @@ class Appliance:
         )
 
     def has_capability(self, capability) -> bool:
+        capability_data = self.capabilities.get(capability)
         return (
-            capability in self.capabilities
-            and self.capabilities[capability]["access"] == "readwrite"
+            isinstance(capability_data, dict)
+            and capability_data.get("access") == "readwrite"
         )
 
     def clear_mode(self):
@@ -732,11 +734,15 @@ class Appliance:
 
     @property
     def speed_range(self) -> tuple[int, int]:
+        fan_speed = self.capabilities.get("Fanspeed", {})
+        minimum = fan_speed.get("min")
+        maximum = fan_speed.get("max")
+        if isinstance(minimum, int) and isinstance(maximum, int) and minimum <= maximum:
+            return minimum, maximum
+
         ## Electrolux Devices:
         if self.model == Model.Muju:
-            if self.mode is WorkMode.QUITE:
-                return 1, 2
-            return 1, 5
+            return 1, 3
         if self.model == Model.WELLA5:
             return 1, 5
         if self.model == Model.WELLA7:
