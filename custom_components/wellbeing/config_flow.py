@@ -79,7 +79,9 @@ class WellbeingFlowHandler(ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
             self.entry = entry
         return await self.async_step_reauth_validate()
 
-    async def async_step_reauth_validate(self, user_input=None) -> ConfigFlowResult:
+    async def async_step_reauth_validate(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Handle reauth and validation."""
         errors: dict[str, str] = {}
 
@@ -96,11 +98,12 @@ class WellbeingFlowHandler(ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
                 user_input[CONF_REFRESH_TOKEN] = self._token_manager.refresh_token
             except Exception as exp:  # pylint: disable=broad-except
                 _LOGGER.error("Validating credentials failed - %s", exp)
-
-            return self.async_update_reload_and_abort(
-                self.entry,
-                data={**user_input},
-            )
+                errors["base"] = "auth"
+            else:
+                return self.async_update_reload_and_abort(
+                    self.entry,
+                    data_updates=user_input,
+                )
 
         return self.async_show_form(
             step_id="reauth_validate",
