@@ -47,6 +47,9 @@ VACUUM_ACTIVITIES = {
     "goingHome": VacuumActivity.RETURNING,  # robot700series returning
     "paused": VacuumActivity.PAUSED,  # robot700series paused
     "sleeping": VacuumActivity.DOCKED,  # robot700series sleeping
+    "vacuuming": VacuumActivity.CLEANING,  # Cybele vacuuming
+    "mopping": VacuumActivity.CLEANING,  # Cybele mopping
+    "vaccumAndMopping": VacuumActivity.CLEANING,  # Cybele combined cleaning
 }
 
 
