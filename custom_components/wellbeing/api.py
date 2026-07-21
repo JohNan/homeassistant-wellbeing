@@ -108,7 +108,7 @@ class Model(str, Enum):
     VacuumHygienic700 = "Gordias"  # HYGIENIC700
     Cybele = "Cybele"
     COMFORT600 = "COMFORT600"
-    AZUL = "AZUL"
+    AZUL = "Azul"
 
 
 class WorkMode(str, Enum):
@@ -200,15 +200,16 @@ class ApplianceBinary(ApplianceEntity):
 
     @property
     def state(self):
-        return self._state in [
-            "enabled",
-            True,
-            "Connected",
-            "on",
-            "ON",
-            "running",
-            "RUNNING",
-        ]
+        if isinstance(self._state, str):
+            return self._state.casefold() in {
+                "connected",
+                "enabled",
+                "on",
+                "running",
+                "true",
+                "yes",
+            }
+        return self._state is True or self._state == 1
 
 
 class ApplianceClimate(ApplianceEntity):
@@ -223,6 +224,10 @@ class ApplianceCamera(ApplianceEntity):
 
     def __init__(self, name, attr) -> None:
         super().__init__(name, attr)
+
+    def setup(self, data):
+        self._state = data.get(self.source_attr, {})
+        return self
 
 
 class ApplianceConsumableSensor(ApplianceSensor):
@@ -675,9 +680,10 @@ class Appliance:
         )
 
     def has_capability(self, capability) -> bool:
+        capability_data = self.capabilities.get(capability)
         return (
-            capability in self.capabilities
-            and self.capabilities[capability]["access"] == "readwrite"
+            isinstance(capability_data, dict)
+            and capability_data.get("access") == "readwrite"
         )
 
     def clear_mode(self):
@@ -715,6 +721,10 @@ class Appliance:
             entity.setup(data)
             for entity in Appliance._create_entities(data)
             if entity.source_attr in data
+            or (
+                isinstance(entity, ApplianceCamera)
+                and self.device == "ROBOTIC_VACUUM_CLEANER"
+            )
         ]
 
     @property
@@ -732,11 +742,15 @@ class Appliance:
 
     @property
     def speed_range(self) -> tuple[int, int]:
+        fan_speed = self.capabilities.get("Fanspeed", {})
+        minimum = fan_speed.get("min")
+        maximum = fan_speed.get("max")
+        if isinstance(minimum, int) and isinstance(maximum, int) and minimum <= maximum:
+            return minimum, maximum
+
         ## Electrolux Devices:
         if self.model == Model.Muju:
-            if self.mode is WorkMode.QUITE:
-                return 1, 2
-            return 1, 5
+            return 1, 3
         if self.model == Model.WELLA5:
             return 1, 5
         if self.model == Model.WELLA7:
@@ -963,7 +977,16 @@ class WellbeingApiClient:
             ):
                 continue
 
-            app = Appliance(appliance_name, appliance_id, model_name)
+            try:
+                app = Appliance(appliance_name, appliance_id, model_name)
+            except ValueError:
+                _LOGGER.warning(
+                    "Skipping unsupported %s appliance %s with model %s",
+                    appliance.device_type,
+                    appliance_id,
+                    model_name,
+                )
+                continue
             app.brand = appliance.brand
             app.serialNumber = appliance.serial_number
             app.device = appliance.device_type
@@ -1139,22 +1162,29 @@ class WellbeingApiClient:
             if not api_map:
                 _LOGGER.error(f"No memory maps found for appliance with id {pnc_id}")
                 return
-            rooms_payload = [
-                {
-                    "roomId": segment_id,
-                    "sweepMode": 0,
-                    "vacuumMode": "standard",
-                    "waterPumpRate": "off",
-                    "numberOfCleaningRepetitions": 1,
+            if appliance.type == Model.Cybele.value:
+                command_payload = {
+                    "mapCommand": "selectRoomsClean",
+                    "mapId": api_map.id,
+                    "type": 0,
+                    "roomInfo": [{"roomId": segment_id} for segment_id in segment_ids],
                 }
-                for segment_id in segment_ids
-            ]
-            command_payload = {
-                "mapCommand": "selectRoomsClean",
-                "mapId": api_map.id,
-                "type": 1,
-                "roomInfo": rooms_payload,
-            }
+            else:
+                command_payload = {
+                    "mapCommand": "selectRoomsClean",
+                    "mapId": api_map.id,
+                    "type": 1,
+                    "roomInfo": [
+                        {
+                            "roomId": segment_id,
+                            "sweepMode": 0,
+                            "vacuumMode": "standard",
+                            "waterPumpRate": "off",
+                            "numberOfCleaningRepetitions": 1,
+                        }
+                        for segment_id in segment_ids
+                    ],
+                }
             result = await appliance.send_command(command_payload)
             _LOGGER.debug(
                 f"Sent clean segments command with data: {command_payload}, result: {result}"
@@ -1199,10 +1229,7 @@ class WellbeingApiClient:
             )
             return
 
-        if command == "clean_room" and appliance.type in [
-            Model.VacuumHygienic700.value,
-            Model.Cybele.value,
-        ]:
+        if command == "clean_room" and appliance.type == Model.VacuumHygienic700.value:
             if params is None:
                 raise ServiceValidationError(
                     f"Parameters are required for command '{command}'"
@@ -1254,7 +1281,7 @@ class WellbeingApiClient:
 
                 repetitions = room["repetitions"]
                 if not isinstance(repetitions, int):
-                    repetitions
+                    repetitions = 1
                     _LOGGER.debug(
                         f"Repetition 1 used as {room['room_name']} input is invalid."
                     )
