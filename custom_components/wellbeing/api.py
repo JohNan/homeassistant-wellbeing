@@ -1,29 +1,29 @@
 """Sample API Client."""
 
 import asyncio
+import copy
 import logging
-from enum import Enum
+from enum import StrEnum
 
+import voluptuous as vol
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
-from homeassistant.exceptions import ServiceValidationError
+from homeassistant.components.vacuum import Segment
 from homeassistant.const import (
+    CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+    CONCENTRATION_PARTS_PER_BILLION,
+    CONCENTRATION_PARTS_PER_MILLION,
+    PERCENTAGE,
+    EntityCategory,
+    Platform,
     UnitOfArea,
     UnitOfTemperature,
     UnitOfTime,
-    PERCENTAGE,
-    CONCENTRATION_PARTS_PER_MILLION,
-    CONCENTRATION_PARTS_PER_BILLION,
-    CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
-    Platform,
-    EntityCategory,
 )
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.typing import UNDEFINED
-from homeassistant.components.vacuum import Segment
-import copy
 from pyelectroluxgroup.api import ElectroluxHubAPI
 from pyelectroluxgroup.appliance import Appliance as ApiAppliance
-import voluptuous as vol
 
 FILTER_TYPE = {
     48: "BREEZE Complete air filter",
@@ -93,7 +93,7 @@ WATER_PUMP_RATES_700SERIES = ["off", "low", "medium", "high"]
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
 
-class Model(str, Enum):
+class Model(StrEnum):
     Muju = "Muju"
     WELLA5 = "WELLA5"
     WELLA7 = "WELLA7"
@@ -111,7 +111,7 @@ class Model(str, Enum):
     AZUL = "Azul"
 
 
-class WorkMode(str, Enum):
+class WorkMode(StrEnum):
     OFF = "PowerOff"
     MANUAL = "Manual"
     UNDEFINED = "Undefined"
@@ -120,7 +120,7 @@ class WorkMode(str, Enum):
     AUTO = "Auto"
 
 
-class LouverSwingMode(str, Enum):
+class LouverSwingMode(StrEnum):
     OFF = "off"
     NARROW = "narrow"
     WIDE = "wide"

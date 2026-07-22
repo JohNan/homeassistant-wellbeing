@@ -1,13 +1,14 @@
 """Adds config flow for Wellbeing."""
 
 import logging
-from typing import Mapping, Any
+from collections.abc import Mapping
+from typing import Any
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.config_entries import ConfigFlowResult, ConfigEntry, ConfigFlow
-from homeassistant.const import CONF_API_KEY, CONF_ACCESS_TOKEN
+from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult
+from homeassistant.const import CONF_ACCESS_TOKEN, CONF_API_KEY
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from pyelectroluxgroup.api import ElectroluxHubAPI
@@ -15,15 +16,15 @@ from pyelectroluxgroup.token_manager import TokenManager
 
 from . import CONF_REFRESH_TOKEN
 from .const import (
-    CONF_SCAN_INTERVAL,
-    DEFAULT_SCAN_INTERVAL,
-    CONFIG_FLOW_TITLE,
     CONF_MAP_ROTATION,
+    CONF_SCAN_INTERVAL,
     CONF_STREAM,
+    CONFIG_FLOW_TITLE,
     DEFAULT_MAP_ROTATION,
+    DEFAULT_SCAN_INTERVAL,
     DEFAULT_STREAM,
+    DOMAIN,
 )
-from .const import DOMAIN
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 

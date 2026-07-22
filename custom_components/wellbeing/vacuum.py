@@ -1,19 +1,19 @@
 """Vacuum platform for Wellbeing."""
 
 import logging
+from typing import Any
 
 from homeassistant.components.vacuum import (
+    Segment,
     StateVacuumEntity,
     VacuumActivity,
     VacuumEntityFeature,
-    Segment,
 )
 from homeassistant.const import Platform
 
 from . import WellbeingDataUpdateCoordinator
 from .const import DOMAIN
 from .entity import WellbeingEntity
-from typing import Any
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 

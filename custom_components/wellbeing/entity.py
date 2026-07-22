@@ -3,11 +3,10 @@
 from homeassistant.const import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
+
 from . import WellbeingDataUpdateCoordinator
 from .api import Appliance, ApplianceEntity
-
-from .const import DEFAULT_NAME
-from .const import DOMAIN
+from .const import DEFAULT_NAME, DOMAIN
 
 
 class WellbeingEntity(CoordinatorEntity):

@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v7
 
       - name: Hassfest validation
         uses: home-assistant/actions/hassfest@master
@@ -24,10 +24,56 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v7
 
       - name: HACS Validation
         uses: hacs/action@main
         with:
           category: integration
           comment: True
+
+  lint:
+    name: Lint & Format (Ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.3.2
+        with:
+          enable-cache: true
+
+      - name: Run Ruff Check
+        run: uvx ruff check .
+
+      - name: Run Ruff Format Check
+        run: uvx ruff format --check .
+
+  test:
+    name: Run Pytest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.3.2
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Install dependencies
+        run: |
+          uv venv
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> $GITHUB_PATH
+          uv pip install --prerelease=allow -r requirements.txt -r requirements_test.txt mutagen home-assistant-frontend
+
+      - name: Run Tests
+        run: |
+          export PYTHONPATH=$PWD
+          uv run pytest

@@ -4,5 +4,23 @@ set -e
 
 cd "$(dirname "$0")/.."
 
-python3 -m pip install --requirement requirements.txt
-python3 -m pip install mutagen home-assistant-frontend
+# Check if uv is available
+if command -v uv >/dev/null 2>&1; then
+    echo "Setting up environment using uv..."
+    if [[ ! -d ".venv" ]]; then
+        uv venv
+    fi
+    source .venv/bin/activate
+    uv pip install --prerelease=allow -r requirements.txt
+    if [[ "$1" == "--test" ]]; then
+        uv pip install --prerelease=allow -r requirements_test.txt
+    fi
+    uv pip install --prerelease=allow mutagen home-assistant-frontend
+else
+    echo "Setting up environment using pip..."
+    python3 -m pip install --requirement requirements.txt
+    if [[ "$1" == "--test" ]]; then
+        python3 -m pip install --requirement requirements_test.txt
+    fi
+    python3 -m pip install mutagen home-assistant-frontend
+fi
