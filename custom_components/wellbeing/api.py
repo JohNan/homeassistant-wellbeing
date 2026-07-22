@@ -872,6 +872,8 @@ class WellbeingApiClient:
         self._api_appliances: dict[str, ApiAppliance] = {}
         self._hub = hub
         self._load_lock = asyncio.Lock()
+        self._livestream_revision = 0
+        self._livestream_updates: dict[str, dict[str, tuple[int, object]]] = {}
 
     async def _ensure_loaded(self) -> None:
         if self._api_appliances:
@@ -887,14 +889,12 @@ class WellbeingApiClient:
         if appliance is None:
             return False
 
-        if property_name in ["status", "connectionState"]:
-            appliance.state_data[property_name] = value
-        else:
-            if "properties" not in appliance.state_data:
-                appliance.state_data["properties"] = {}
-            if "reported" not in appliance.state_data["properties"]:
-                appliance.state_data["properties"]["reported"] = {}
-            appliance.state_data["properties"]["reported"][property_name] = value
+        self._livestream_revision += 1
+        self._livestream_updates.setdefault(appliance_id, {})[property_name] = (
+            self._livestream_revision,
+            value,
+        )
+        self._set_appliance_state(appliance, property_name, value)
 
         _LOGGER.debug(
             f"Live stream update for {appliance_id}: {property_name} = {value}"
@@ -911,14 +911,39 @@ class WellbeingApiClient:
 
         return True
 
+    @staticmethod
+    def _set_appliance_state(appliance, property_name, value) -> None:
+        if property_name in ["status", "connectionState"]:
+            appliance.state_data[property_name] = value
+        else:
+            if "properties" not in appliance.state_data:
+                appliance.state_data["properties"] = {}
+            if "reported" not in appliance.state_data["properties"]:
+                appliance.state_data["properties"]["reported"] = {}
+            appliance.state_data["properties"]["reported"][property_name] = value
+
+    def _reapply_concurrent_livestream_updates(
+        self, appliance, poll_revision: int
+    ) -> None:
+        for property_name, (revision, value) in self._livestream_updates.get(
+            appliance.id, {}
+        ).items():
+            if revision > poll_revision:
+                self._set_appliance_state(appliance, property_name, value)
+
     async def async_get_appliances(self) -> Appliances:
         """Get data from the API."""
 
         await self._ensure_loaded()
+        for appliance in self._api_appliances.values():
+            poll_revision = self._livestream_revision
+            await appliance.async_update()
+            # The poll supersedes earlier stream values. Preserve only events
+            # received while this appliance request was in flight.
+            self._reapply_concurrent_livestream_updates(appliance, poll_revision)
+
         found_appliances = {}
         for appliance in (appliance for appliance in self._api_appliances.values()):
-            await appliance.async_update()
-
             model_name = appliance.type
             appliance_id = appliance.id
             appliance_name = appliance.name
