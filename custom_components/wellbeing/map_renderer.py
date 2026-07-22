@@ -21,9 +21,9 @@ All functions in this module are synchronous and CPU-bound; call them from an
 executor.
 """
 
-from dataclasses import dataclass, field
 import io
 import math
+from dataclasses import dataclass, field
 
 from PIL import Image, ImageDraw
 
@@ -69,7 +69,9 @@ def _to_global(point, transform):
     return _rotate((point[0] - tx, point[1] - ty), -a)
 
 
-def render_map(reported: dict, rotation_deg: float = 0.0, robot_marker: str = ROBOT_MARKER_NONE) -> MapImage | None:
+def render_map(
+    reported: dict, rotation_deg: float = 0.0, robot_marker: str = ROBOT_MARKER_NONE
+) -> MapImage | None:
     """Render the vacuum map from the reported appliance state.
 
     robot_marker selects where the robot is drawn: at its reported pose (only
@@ -85,7 +87,11 @@ def render_map(reported: dict, rotation_deg: float = 0.0, robot_marker: str = RO
     def view(point):
         return _rotate(point, view_rotation)
 
-    transforms = {t["t"]: t["xya"] for t in map_data.get("transforms", []) if len(t.get("xya", [])) == 3}
+    transforms = {
+        t["t"]: t["xya"]
+        for t in map_data.get("transforms", [])
+        if len(t.get("xya", [])) == 3
+    }
     identity = [0.0, 0.0, 0.0]
 
     # Crumb chunks, each in its own frame; keep chunks separate so the pen
@@ -125,7 +131,11 @@ def render_map(reported: dict, rotation_deg: float = 0.0, robot_marker: str = RO
     # robot is drawn on the charger instead.
     robot = robot_heading = None
     robot_pose = map_data.get("robotPose")
-    if robot_marker == ROBOT_MARKER_POSE and robot_pose and len(robot_pose.get("xya", [])) == 3:
+    if (
+        robot_marker == ROBOT_MARKER_POSE
+        and robot_pose
+        and len(robot_pose.get("xya", [])) == 3
+    ):
         robot = view(robot_pose["xya"][:2])
         robot_heading = robot_pose["xya"][2] + view_rotation
     elif robot_marker == ROBOT_MARKER_CHARGER and charger:
@@ -164,7 +174,10 @@ def render_map(reported: dict, rotation_deg: float = 0.0, robot_marker: str = RO
                 draw.line(pts, fill=SWATH, width=swath_width, joint="curve")
             for p in (pts[0], pts[-1]):
                 radius = swath_width / 2
-                draw.ellipse([p[0] - radius, p[1] - radius, p[0] + radius, p[1] + radius], fill=SWATH)
+                draw.ellipse(
+                    [p[0] - radius, p[1] - radius, p[0] + radius, p[1] + radius],
+                    fill=SWATH,
+                )
 
     # Centre path line on top of the swath
     for _, chunk in chunks:
@@ -225,8 +238,16 @@ def _draw_charger(draw, center, scale):
     cx, cy = center
     radius = 0.14 * scale
     draw.ellipse([cx - radius, cy - radius, cx + radius, cy + radius], fill=CHARGER)
-    draw.line([cx, cy - radius * 0.5, cx, cy + radius * 0.5], fill=BACKGROUND, width=int(radius / 3))
-    draw.line([cx - radius * 0.4, cy, cx + radius * 0.4, cy], fill=BACKGROUND, width=int(radius / 3))
+    draw.line(
+        [cx, cy - radius * 0.5, cx, cy + radius * 0.5],
+        fill=BACKGROUND,
+        width=int(radius / 3),
+    )
+    draw.line(
+        [cx - radius * 0.4, cy, cx + radius * 0.4, cy],
+        fill=BACKGROUND,
+        width=int(radius / 3),
+    )
 
 
 def _draw_robot(draw, px, robot, heading, scale):
@@ -237,7 +258,9 @@ def _draw_robot(draw, px, robot, heading, scale):
     line_width = max(2, int(radius / 11))
 
     def along(dist_m, angle):
-        return px((robot[0] + dist_m * math.cos(angle), robot[1] + dist_m * math.sin(angle)))
+        return px(
+            (robot[0] + dist_m * math.cos(angle), robot[1] + dist_m * math.sin(angle))
+        )
 
     draw.ellipse(
         [rx - radius, ry - radius, rx + radius, ry + radius],
@@ -252,9 +275,18 @@ def _draw_robot(draw, px, robot, heading, scale):
     draw.line(chord, fill=ROBOT_OUTLINE, width=line_width)
     lidar_x, lidar_y = along(radius_m * 0.6, heading)
     lidar_r = radius * 3 / 11
-    draw.ellipse([lidar_x - lidar_r, lidar_y - lidar_r, lidar_x + lidar_r, lidar_y + lidar_r], fill=ROBOT_OUTLINE)
+    draw.ellipse(
+        [lidar_x - lidar_r, lidar_y - lidar_r, lidar_x + lidar_r, lidar_y + lidar_r],
+        fill=ROBOT_OUTLINE,
+    )
     button_x, button_y = along(radius_m * 0.8, heading + math.pi)
     button_r = radius * 1.5 / 11
     draw.ellipse(
-        [button_x - button_r, button_y - button_r, button_x + button_r, button_y + button_r], fill=ROBOT_OUTLINE
+        [
+            button_x - button_r,
+            button_y - button_r,
+            button_x + button_r,
+            button_y + button_r,
+        ],
+        fill=ROBOT_OUTLINE,
     )

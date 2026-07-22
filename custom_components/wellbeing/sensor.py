@@ -3,12 +3,12 @@
 from typing import cast
 
 from homeassistant.components.sensor import (
-    SensorEntity,
     SensorDeviceClass,
+    SensorEntity,
     SensorStateClass,
 )
-from homeassistant.util.percentage import ranged_value_to_percentage
 from homeassistant.const import Platform
+from homeassistant.util.percentage import ranged_value_to_percentage
 
 from .api import ApplianceSensor
 from .const import DOMAIN

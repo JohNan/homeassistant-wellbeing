@@ -4,16 +4,16 @@ import logging
 from typing import Any
 
 from homeassistant.components.climate import (
-    ClimateEntity,
-    ClimateEntityFeature,
-    HVACMode,
-    HVACAction,
     FAN_AUTO,
+    FAN_HIGH,
     FAN_LOW,
     FAN_MEDIUM,
-    FAN_HIGH,
+    ClimateEntity,
+    ClimateEntityFeature,
+    HVACAction,
+    HVACMode,
 )
-from homeassistant.const import UnitOfTemperature, Platform, ATTR_TEMPERATURE
+from homeassistant.const import ATTR_TEMPERATURE, Platform, UnitOfTemperature
 
 from .const import DOMAIN
 from .entity import WellbeingEntity

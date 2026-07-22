@@ -9,25 +9,24 @@ import logging
 from datetime import timedelta
 
 from aiohttp import ClientResponseError
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_ACCESS_TOKEN, CONF_API_KEY, Platform
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from pyelectroluxgroup.api import ElectroluxHubAPI
 from pyelectroluxgroup.token_manager import TokenManager
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_API_KEY, CONF_ACCESS_TOKEN, Platform
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady, ConfigEntryAuthFailed
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from homeassistant.helpers.update_coordinator import UpdateFailed
 from .api import WellbeingApiClient
 from .const import (
-    CONF_SCAN_INTERVAL,
-    DEFAULT_SCAN_INTERVAL,
     CONF_REFRESH_TOKEN,
+    CONF_SCAN_INTERVAL,
     CONF_STREAM,
+    DEFAULT_SCAN_INTERVAL,
     DEFAULT_STREAM,
+    DOMAIN,
 )
-from .const import DOMAIN
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 AUTH_ERROR_STATUSES = {401, 403}

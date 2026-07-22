@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v7
 
       - name: Get version
         id: version
@@ -26,7 +26,7 @@ jobs:
           zip wellbeing.zip -r ./
 
       - name: Upload zip to release
-        uses: svenstaro/upload-release-action@v1-release
+        uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: ./custom_components/wellbeing/wellbeing.zip

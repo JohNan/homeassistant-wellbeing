@@ -1,0 +1,34 @@
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501", # Line too long
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["custom_components.wellbeing", "tests"]
+combine-as-imports = true
+
+[tool.pytest.ini_options]
+addopts = "-qq --cov=custom_components.wellbeing"
+console_output_style = "count"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.coverage.run]
+branch = false
+source = ["custom_components.wellbeing"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 10

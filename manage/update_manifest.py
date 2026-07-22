@@ -1,8 +1,8 @@
 """Update the manifest file."""
 
-import sys
 import json
 import os
+import sys
 
 
 def update_manifest():
