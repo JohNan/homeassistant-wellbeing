@@ -74,6 +74,8 @@ async def async_setup_entry(hass, entry, async_add_devices):
 class WellbeingVacuum(WellbeingEntity, StateVacuumEntity):
     """wellbeing Sensor class."""
 
+    _attr_translation_key = "vacuum"
+
     def __init__(
         self,
         coordinator: WellbeingDataUpdateCoordinator,
