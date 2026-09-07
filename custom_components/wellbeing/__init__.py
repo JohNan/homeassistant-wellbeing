@@ -70,7 +70,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     except Exception as exception:
         raise ConfigEntryAuthFailed("Failed to setup API") from exception
 
-    client = WellbeingApiClient(hub, use_stream=use_stream)
+    client = WellbeingApiClient(hub)
 
     coordinator = WellbeingDataUpdateCoordinator(
         hass,

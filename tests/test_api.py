@@ -177,7 +177,7 @@ async def test_api_client_ensure_loaded():
     mock_appliance.id = "pnc_1"
     mock_hub.async_get_appliances.return_value = [mock_appliance]
 
-    client = WellbeingApiClient(mock_hub, use_stream=False)
+    client = WellbeingApiClient(mock_hub)
     await client._ensure_loaded()
 
     assert "pnc_1" in client._api_appliances
@@ -186,19 +186,15 @@ async def test_api_client_ensure_loaded():
 
 @pytest.mark.asyncio
 async def test_api_client_livestream():
-    """Test livestream configuration fetching and state updates."""
+    """Test livestream state updates."""
     mock_hub = AsyncMock()
     mock_appliance = MagicMock()
     mock_appliance.id = "pnc_1"
     mock_appliance.state_data = {}
     mock_hub.async_get_appliances.return_value = [mock_appliance]
-    mock_hub.async_get_livestream_configurations.return_value = {
-        "appliances": [{"applianceId": "pnc_1", "properties": ["battery"]}]
-    }
-
-    client = WellbeingApiClient(mock_hub, use_stream=True)
+    client = WellbeingApiClient(mock_hub)
     await client._ensure_loaded()
-    assert client._livestream_properties["pnc_1"] == ["battery"]
+    mock_hub.async_get_livestream_configurations.assert_not_awaited()
 
     # Test update_appliance_state
     ha_appliances = MagicMock()
@@ -224,6 +220,6 @@ async def test_api_client_update_error():
         request_info=MagicMock(), history=(), status=401, message="Unauthorized"
     )
 
-    client = WellbeingApiClient(mock_hub, use_stream=False)
+    client = WellbeingApiClient(mock_hub)
     with pytest.raises(ClientResponseError):
         await client._ensure_loaded()
