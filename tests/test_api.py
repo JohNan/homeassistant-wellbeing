@@ -161,6 +161,46 @@ def test_appliance_setup_muju():
     assert appliance.speed_range == (1, 3)
 
 
+def test_appliance_preset_modes_follow_capabilities():
+    """Preset modes come from the reported capabilities when they are present."""
+    appliance = Appliance("AirPurifier", "pnc_muju_no_smart", "Muju")
+    appliance.device = "AIR_PURIFIER"
+    appliance.setup(
+        {"Workmode": "Manual", "LouverSwing": "off"},
+        {
+            "Workmode": {
+                "access": "readwrite",
+                "type": "string",
+                "values": {"Auto": {}, "Manual": {}, "Quiet": {}, "PowerOff": {}},
+            }
+        },
+    )
+    assert appliance.preset_modes == [
+        WorkMode.AUTO,
+        WorkMode.MANUAL,
+        WorkMode.QUITE,
+        WorkMode.OFF,
+    ]
+    # This unit has no Smart, so turning on without a preset must not send it.
+    assert appliance.work_mode_from_preset_mode(None) == WorkMode.AUTO
+
+
+def test_appliance_preset_modes_keep_smart_when_reported():
+    """Units that do report Smart keep using it as the default mode."""
+    appliance = Appliance("AirPurifier", "pnc_muju_smart", "Muju")
+    appliance.device = "AIR_PURIFIER"
+    appliance.setup(
+        {"Workmode": "Smart", "LouverSwing": "off"},
+        {"Workmode": {"values": {"Smart": {}, "Manual": {}, "PowerOff": {}}}},
+    )
+    assert appliance.preset_modes == [
+        WorkMode.SMART,
+        WorkMode.MANUAL,
+        WorkMode.OFF,
+    ]
+    assert appliance.work_mode_from_preset_mode(None) == WorkMode.SMART
+
+
 def test_appliances_collection():
     """Test Appliances collection wrapper."""
     app1 = Appliance("A", "1", "PUREi9")

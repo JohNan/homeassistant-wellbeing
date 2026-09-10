@@ -728,6 +728,18 @@ class Appliance:
 
     @property
     def preset_modes(self) -> list[WorkMode]:
+        # Prefer the modes the appliance reports. Not every Muju has Smart, and
+        # sending a mode the unit does not list is rejected with a 406, so the
+        # per-model lists below are only a fallback for empty capabilities.
+        values = (self.capabilities.get("Workmode") or {}).get("values") or {}
+        modes: list[WorkMode] = []
+        for name in values:
+            try:
+                modes.append(WorkMode(name))
+            except ValueError:
+                continue
+        if modes:
+            return modes
         if self.model == Model.Muju:
             return [WorkMode.SMART, WorkMode.QUITE, WorkMode.MANUAL, WorkMode.OFF]
         return [WorkMode.AUTO, WorkMode.MANUAL, WorkMode.OFF]
@@ -735,6 +747,14 @@ class Appliance:
     def work_mode_from_preset_mode(self, preset_mode: str | None) -> WorkMode:
         if preset_mode:
             return WorkMode(preset_mode)
+        # fan.turn_on without a preset ends up here, so pick an automatic mode
+        # the appliance actually supports rather than assuming Smart.
+        available = self.preset_modes
+        for candidate in (WorkMode.SMART, WorkMode.AUTO):
+            if candidate in available:
+                return candidate
+        if WorkMode.MANUAL in available:
+            return WorkMode.MANUAL
         if self.model == Model.Muju:
             return WorkMode.SMART
         return WorkMode.AUTO
