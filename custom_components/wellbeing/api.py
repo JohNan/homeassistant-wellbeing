@@ -13,11 +13,9 @@ from homeassistant.const import (
     PERCENTAGE,
     EntityCategory,
     Platform,
-    UnitOfArea,
     UnitOfDensity,
     UnitOfRatio,
     UnitOfTemperature,
-    UnitOfTime,
 )
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.typing import UNDEFINED
@@ -218,17 +216,6 @@ class ApplianceClimate(ApplianceEntity):
         super().__init__(name, attr)
 
 
-class ApplianceCamera(ApplianceEntity):
-    entity_type: int = Platform.CAMERA
-
-    def __init__(self, name, attr) -> None:
-        super().__init__(name, attr)
-
-    def setup(self, data):
-        self._state = data.get(self.source_attr, {})
-        return self
-
-
 class ApplianceConsumableSensor(ApplianceSensor):
     """Remaining life of a consumable, in percent.
 
@@ -252,32 +239,6 @@ class ApplianceConsumableSensor(ApplianceSensor):
         self._state = max(
             0, round(100 * (1 - float(data[self.source_attr]) / self.rated_sqm))
         )
-        return self
-
-
-class ApplianceCleaningSessionSensor(ApplianceSensor):
-    """Sensor reading one value from the vacuum's reported cleaningSession."""
-
-    def __init__(
-        self,
-        name,
-        attr,
-        session_key,
-        unit="",
-        device_class=None,
-        state_class: SensorStateClass | str | None = None,
-        transform=None,
-    ) -> None:
-        super().__init__(name, attr, unit, device_class, state_class=state_class)
-        self.source_attr = "cleaningSession"
-        self.session_key = session_key
-        self.transform = transform
-
-    def setup(self, data):
-        value = (data.get(self.source_attr) or {}).get(self.session_key)
-        if value is not None and self.transform is not None:
-            value = self.transform(value)
-        self._state = value
         return self
 
 
@@ -452,31 +413,6 @@ class Appliance:
                 attr="batteryStatus",
                 device_class=SensorDeviceClass.BATTERY,
                 unit=PERCENTAGE,
-            ),
-            # Only created for robots whose state reports dynamic map data
-            ApplianceCamera(
-                name="Map",
-                attr="mapData",
-            ),
-            # Only created for robots whose state reports cleaningSession
-            ApplianceCleaningSessionSensor(
-                name="Cleaned Area",
-                attr="cleanedArea",
-                session_key="areaCovered",
-                unit=UnitOfArea.SQUARE_METERS,
-                device_class=SensorDeviceClass.AREA,
-                state_class=SensorStateClass.MEASUREMENT,
-                transform=lambda value: round(float(value), 1),
-            ),
-            ApplianceCleaningSessionSensor(
-                name="Cleaning Time",
-                attr="cleaningTime",
-                session_key="cleaningDuration",
-                unit=UnitOfTime.SECONDS,
-                device_class=SensorDeviceClass.DURATION,
-                state_class=SensorStateClass.MEASUREMENT,
-                # cleaningDuration is reported in 100 ns ticks
-                transform=lambda value: round(int(value) / 1e7),
             ),
         ]
 
@@ -720,10 +656,6 @@ class Appliance:
             entity.setup(data)
             for entity in Appliance._create_entities(data)
             if entity.source_attr in data
-            or (
-                isinstance(entity, ApplianceCamera)
-                and self.device == "ROBOTIC_VACUUM_CLEANER"
-            )
         ]
 
     @property
