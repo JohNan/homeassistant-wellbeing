@@ -4,65 +4,6 @@ This text contains manual entries for non-obvious features of specific appliance
 
 ## Robotic Vacuum Cleaners (RVC)
 
-### Vacuum map camera
-
-Robot vacuums whose appliance state reports dynamic map data (verified on the
-PUREi9.2) get a camera entity showing the map of the latest cleaning session:
-the covered area, the cleaning path, the charger and — while the robot is
-moving — the robot itself. The image updates on every API update. Please note
-that Electrolux's API provides the map data with quite a few minutes of delay,
-i.e. much slower than the native Electrolux app. So consider it a map of what
-the robot has cleaned, rather than where the robot is right now.
-
-The camera can be used with a plain picture-entity card, or with
-[Xiaomi Vacuum Map Card](https://github.com/PiotrMachowski/lovelace-xiaomi-vacuum-map-card),
-which can be installed from [HACS](https://hacs.xyz) (search for "Xiaomi
-Vacuum Map Card"). An example configuration, with tiles for status, battery,
-fan speed, cleaned area and cleaning time (the latter two are only available
-on appliances that report cleaning session data):
-
-```yaml
-type: custom:xiaomi-vacuum-map-card
-entity: vacuum.your_robot
-vacuum_platform: default
-map_source:
-  camera: camera.your_robot_map
-calibration_source:
-  camera: true
-map_locked: true
-tiles:
-  - label: Status
-    entity: vacuum.your_robot
-    icon: mdi:robot-vacuum
-  - label: Battery
-    entity: sensor.your_robot_battery
-    icon: mdi:battery
-    unit: "%"
-  - label: Fan speed
-    entity: vacuum.your_robot
-    attribute: fan_speed
-    icon: mdi:fan
-  - label: Cleaned area
-    entity: sensor.your_robot_cleaned_area
-    icon: mdi:texture-box
-    unit: m²
-  - label: Cleaning time
-    entity: sensor.your_robot_cleaning_time
-    icon: mdi:timer-outline
-    unit: min
-    multiplier: 0.01666667
-    precision: 0
-```
-
-The camera exposes a `calibration_points` attribute mapping the vacuum
-coordinate system (metres, persistent map frame) to image pixels, which the
-card consumes via `calibration_source: camera: true`.
-
-The map orientation can be adjusted with the "Vacuum map rotation" integration
-option (degrees counter-clockwise), for example to match the orientation shown
-in the Electrolux app.
-
-
 ### PUREi9
 
 Consumable sensors (Main Brush, Side Brush, Filter) show remaining life in

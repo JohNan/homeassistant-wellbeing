@@ -38,7 +38,7 @@ class DummyMemoryMap:
 
 @pytest.mark.asyncio
 async def test_platforms(hass):
-    """Test all platforms (vacuum, climate, fan, sensor, binary_sensor, camera, switch) setup and operations."""
+    """Test all platforms (vacuum, climate, fan, sensor, binary_sensor, switch) setup and operations."""
 
     # Define a mock PUREi9 vacuum
     vacuum_app = Appliance("Vacuum Cleaner", "pnc_vac1", "PUREi9")
@@ -54,14 +54,6 @@ async def test_platforms(hass):
         "FrmVer_NIU": "v1.0",
         "status": "Running",
         "connectionState": "Connected",
-        "mapData": {
-            "sessionId": "session_1",
-            "timestamp": 123456789,
-            "crumbs": [
-                {"xy": [0.0, 0.0], "t": 0},
-                {"xy": [0.2, 0.2], "t": 0},
-            ],
-        },
     }
     vacuum_app.setup(vacuum_data, {})
 
@@ -209,7 +201,6 @@ async def test_platforms(hass):
         gordias_entity_id = "vacuum.wellbeing_robot_gordias_robotstatus"
         purifier_fan_entity_id = "fan.wellbeing_air_purifier_fanspeed"
         climate_entity_id = "climate.wellbeing_climate_ac_mode"
-        camera_entity_id = "camera.wellbeing_vacuum_cleaner_mapdata"
         sensor_entity_id = "sensor.wellbeing_air_purifier_filterlife"
         binary_entity_id = "binary_sensor.wellbeing_air_purifier_safetylock"
 
@@ -217,7 +208,6 @@ async def test_platforms(hass):
         assert hass.states.get(gordias_entity_id) is not None
         assert hass.states.get(purifier_fan_entity_id) is not None
         assert hass.states.get(climate_entity_id) is not None
-        assert hass.states.get(camera_entity_id) is not None
         assert hass.states.get(sensor_entity_id) is not None
         assert hass.states.get(binary_entity_id) is not None
 
@@ -398,12 +388,7 @@ async def test_platforms(hass):
             "fan", "turn_on", {"entity_id": purifier_fan_entity_id}, blocking=True
         )
 
-        # 4. Test Camera Operations
-        camera_state = hass.states.get(camera_entity_id)
-        assert camera_state is not None
-        assert "calibration_points" in camera_state.attributes
-
-        # 5. Test Switch Operations (via WellbeingSwitch unit test to bypass unique_id conflict)
+        # 4. Test Switch Operations (via WellbeingSwitch unit test to bypass unique_id conflict)
         sw = WellbeingSwitch(coordinator, entry, "pnc_pur1", "UILight")
         assert sw.is_on is False
 

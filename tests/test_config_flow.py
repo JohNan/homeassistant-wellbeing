@@ -143,12 +143,10 @@ async def test_options_flow(hass):
         {
             "scan_interval": 30,
             "stream": True,
-            "map_rotation": 90,
         },
     )
     assert result2["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
     assert result2["data"] == {
         "scan_interval": 30,
         "stream": True,
-        "map_rotation": 90,
     }
