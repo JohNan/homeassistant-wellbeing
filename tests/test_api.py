@@ -149,13 +149,30 @@ def test_appliance_setup_muju():
     appliance = Appliance("AirPurifier", "pnc_muju", "Muju")
     appliance.device = "AIR_PURIFIER"
     appliance.setup({"Workmode": "Manual", "LouverSwing": "off"}, {})
+    # Without reported capabilities, fall back to the Muju defaults. "Smart" is
+    # not supported by this model, so "Auto" is offered instead.
     assert appliance.preset_modes == [
-        WorkMode.SMART,
+        WorkMode.AUTO,
         WorkMode.QUITE,
         WorkMode.MANUAL,
         WorkMode.OFF,
     ]
     assert appliance.work_mode_from_preset_mode("PowerOff") == WorkMode.OFF
+
+    # When the appliance reports its Workmode capabilities, the preset modes
+    # are derived from them.
+    appliance_with_caps = Appliance("AirPurifier", "pnc_muju_caps", "Muju")
+    appliance_with_caps.device = "AIR_PURIFIER"
+    appliance_with_caps.setup(
+        {"Workmode": "Manual"},
+        {"Workmode": {"values": ["Auto", "Manual", "Quiet", "PowerOff"]}},
+    )
+    assert appliance_with_caps.preset_modes == [
+        WorkMode.AUTO,
+        WorkMode.MANUAL,
+        WorkMode.QUITE,
+        WorkMode.OFF,
+    ]
 
     # speed range
     assert appliance.speed_range == (1, 3)
