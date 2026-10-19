@@ -729,17 +729,12 @@ class Appliance:
     @property
     def preset_modes(self) -> list[WorkMode]:
         # Derive the available modes from what the appliance actually reports
-        # in its capabilities instead of a hardcoded per-model list. The Muju
-        # (AEG PURE5000) reports Auto/Manual/Quiet/PowerOff and does not
-        # support "Smart", so the hardcoded list made the integration send an
-        # unsupported work mode that the API rejected (HTTP 406), leaving the
-        # fan uncontrollable.
+        # in its capabilities instead of a hardcoded per-model list.
         valid_modes = {mode.value for mode in WorkMode}
-        workmode_values = self.capabilities.get("Workmode", {}).get("values")
-        if workmode_values:
-            return [
-                WorkMode(value) for value in workmode_values if value in valid_modes
-            ]
+        workmode_values = (self.capabilities.get("Workmode") or {}).get("values") or {}
+        modes = [WorkMode(value) for value in workmode_values if value in valid_modes]
+        if modes:
+            return modes
         if self.model == Model.Muju:
             return [WorkMode.AUTO, WorkMode.QUITE, WorkMode.MANUAL, WorkMode.OFF]
         return [WorkMode.AUTO, WorkMode.MANUAL, WorkMode.OFF]
