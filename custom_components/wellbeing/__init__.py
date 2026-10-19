@@ -31,7 +31,6 @@ from .const import (
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 AUTH_ERROR_STATUSES = {401, 403}
 PLATFORMS = [
-    Platform.CAMERA,
     Platform.SENSOR,
     Platform.FAN,
     Platform.BINARY_SENSOR,
@@ -51,16 +50,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     else:
         base_interval = DEFAULT_SCAN_INTERVAL
 
-    # With the live stream enabled, polling is the slow path for full-state
-    # refreshes - but the stream does not carry every property (e.g. the
-    # vacuum map data only arrives via polling), so while a vacuum is active
-    # the coordinator polls at the base interval to follow the cleaning session.
     use_stream = entry.options.get(CONF_STREAM, DEFAULT_STREAM)
     if use_stream:
         update_interval = timedelta(seconds=base_interval * 5)
     else:
         update_interval = timedelta(seconds=base_interval)
-    active_update_interval = timedelta(seconds=base_interval)
 
     token_manager = WellBeingTokenManager(hass, entry)
     try:
@@ -77,7 +71,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         client=client,
         update_interval=update_interval,
         config_entry=entry,
-        active_update_interval=active_update_interval,
     )
 
     await coordinator.async_config_entry_first_refresh()
@@ -115,12 +108,9 @@ class WellbeingDataUpdateCoordinator(DataUpdateCoordinator):
         client: WellbeingApiClient,
         update_interval: timedelta,
         config_entry: ConfigEntry,
-        active_update_interval: timedelta | None = None,
     ) -> None:
         """Initialize."""
         self.api = client
-        self._idle_update_interval = update_interval
-        self._active_update_interval = active_update_interval or update_interval
         super().__init__(
             hass,
             _LOGGER,
@@ -133,37 +123,11 @@ class WellbeingDataUpdateCoordinator(DataUpdateCoordinator):
         """Update data via library."""
         try:
             appliances = await self.api.async_get_appliances()
-            self.update_interval = (
-                self._active_update_interval
-                if self._has_active_vacuum(appliances)
-                else self._idle_update_interval
-            )
             return {"appliances": appliances}
         except Exception as exception:
             if _is_authentication_error(exception):
                 raise ConfigEntryAuthFailed from exception
             raise UpdateFailed(exception) from exception
-
-    @staticmethod
-    def _has_active_vacuum(appliances) -> bool:
-        """Whether any robot vacuum is currently on a cleaning session."""
-        from homeassistant.components.vacuum import VacuumActivity
-
-        from .vacuum import (
-            VACUUM_ACTIVITIES,
-        )  # local import, vacuum.py imports this module
-
-        active = {
-            VacuumActivity.CLEANING,
-            VacuumActivity.RETURNING,
-            VacuumActivity.PAUSED,
-        }
-        return any(
-            VACUUM_ACTIVITIES.get(entity.state) in active
-            for appliance in appliances.appliances.values()
-            for entity in appliance.entities
-            if entity.entity_type == Platform.VACUUM
-        )
 
     async def _listen_for_changes(self):
         """Listen to live stream for changes."""
@@ -181,8 +145,8 @@ class WellbeingDataUpdateCoordinator(DataUpdateCoordinator):
                 # Notify entities without async_set_updated_data: that would
                 # reset the polling schedule, and a steady trickle of stream
                 # events (e.g. battery updates) would then postpone polling
-                # indefinitely, freezing all properties that only arrive via
-                # polling (such as the vacuum map data).
+                # indefinitely, freezing every property that only arrives via
+                # polling.
                 self.async_update_listeners()
 
 

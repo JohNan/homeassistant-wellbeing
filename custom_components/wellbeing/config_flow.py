@@ -16,11 +16,9 @@ from pyelectroluxgroup.token_manager import TokenManager
 
 from . import CONF_REFRESH_TOKEN
 from .const import (
-    CONF_MAP_ROTATION,
     CONF_SCAN_INTERVAL,
     CONF_STREAM,
     CONFIG_FLOW_TITLE,
-    DEFAULT_MAP_ROTATION,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_STREAM,
     DOMAIN,
@@ -200,12 +198,6 @@ class WellbeingOptionsFlowHandler(config_entries.OptionsFlowWithReload):
                             CONF_STREAM, DEFAULT_STREAM
                         ),
                     ): bool,
-                    vol.Optional(
-                        CONF_MAP_ROTATION,
-                        default=self.config_entry.options.get(
-                            CONF_MAP_ROTATION, DEFAULT_MAP_ROTATION
-                        ),
-                    ): vol.All(vol.Coerce(int), vol.Range(min=0, max=359)),
                 }
             ),
         )

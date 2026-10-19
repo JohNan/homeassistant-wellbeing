@@ -11,8 +11,6 @@ from homeassistant.const import Platform
 from custom_components.wellbeing.api import (
     Appliance,
     ApplianceBinary,
-    ApplianceCamera,
-    ApplianceCleaningSessionSensor,
     ApplianceClimate,
     ApplianceConsumableSensor,
     ApplianceFan,
@@ -64,22 +62,10 @@ def test_appliance_entities():
     climate = ApplianceClimate("Climate Name", "climate_attr")
     assert climate.entity_type == Platform.CLIMATE
 
-    camera = ApplianceCamera("Camera Name", "camera_attr")
-    assert camera.entity_type == Platform.CAMERA
-    camera.setup({"camera_attr": b"image_data"})
-    assert camera.state == b"image_data"
-
     consumable = ApplianceConsumableSensor("Consumable", "filter_life", 1000)
     assert consumable.entity_type == Platform.SENSOR
     consumable.setup({"filter_life": 500})
     assert consumable.state == 50.0  # 500 / 1000 * 100
-
-    session_sensor = ApplianceCleaningSessionSensor(
-        "Session", "clean_time", "sessionKey"
-    )
-    assert session_sensor.entity_type == Platform.SENSOR
-    session_sensor.setup({"cleaningSession": {"sessionKey": 60}})
-    assert session_sensor.state == 60
 
 
 def test_appliance_setup_purei9():
