@@ -39,5 +39,22 @@
         }
       }
     }
+  },
+  "entity": {
+    "vacuum": {
+      "vacuum": {
+        "state_attributes": {
+          "fan_speed": {
+            "state": {
+              "quiet": "Tyst",
+              "smart": "Smart",
+              "power": "Power",
+              "eco": "Eco",
+              "standard": "Standard"
+            }
+          }
+        }
+      }
+    }
   }
 }

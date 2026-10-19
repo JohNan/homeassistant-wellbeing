@@ -9,13 +9,12 @@ from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.components.vacuum import Segment
 from homeassistant.const import (
-    CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
-    CONCENTRATION_PARTS_PER_BILLION,
-    CONCENTRATION_PARTS_PER_MILLION,
     PERCENTAGE,
     EntityCategory,
     Platform,
     UnitOfArea,
+    UnitOfDensity,
+    UnitOfRatio,
     UnitOfTemperature,
     UnitOfTime,
 )
@@ -303,7 +302,7 @@ class Appliance:
             ApplianceSensor(
                 name="PM2.5",
                 attr="pm25",
-                unit=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+                unit=UnitOfDensity.MICROGRAMS_PER_CUBIC_METER,
                 device_class=SensorDeviceClass.PM25,
                 state_class=SensorStateClass.MEASUREMENT,
             ),
@@ -378,7 +377,7 @@ class Appliance:
             ApplianceSensor(
                 name="PM2.5",
                 attr="PM2_5_approximate",
-                unit=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+                unit=UnitOfDensity.MICROGRAMS_PER_CUBIC_METER,
                 device_class=SensorDeviceClass.PM25,
                 state_class=SensorStateClass.MEASUREMENT,
             ),
@@ -440,7 +439,7 @@ class Appliance:
             ApplianceSensor(
                 name="CO2",
                 attr="CO2",
-                unit=CONCENTRATION_PARTS_PER_MILLION,
+                unit=UnitOfRatio.PARTS_PER_MILLION,
                 device_class=SensorDeviceClass.CO2,
                 state_class=SensorStateClass.MEASUREMENT,
             ),
@@ -565,34 +564,34 @@ class Appliance:
             ApplianceSensor(
                 name="TVOC",
                 attr="TVOC",
-                unit=CONCENTRATION_PARTS_PER_BILLION,
+                unit=UnitOfRatio.PARTS_PER_BILLION,
                 state_class=SensorStateClass.MEASUREMENT,
             ),
             ApplianceSensor(
                 name="eCO2",
                 attr="ECO2",
-                unit=CONCENTRATION_PARTS_PER_MILLION,
+                unit=UnitOfRatio.PARTS_PER_MILLION,
                 device_class=SensorDeviceClass.CO2,
                 state_class=SensorStateClass.MEASUREMENT,
             ),
             ApplianceSensor(
                 name="PM1",
                 attr="PM1",
-                unit=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+                unit=UnitOfDensity.MICROGRAMS_PER_CUBIC_METER,
                 device_class=SensorDeviceClass.PM1,
                 state_class=SensorStateClass.MEASUREMENT,
             ),
             ApplianceSensor(
                 name="PM2.5",
                 attr="PM2_5",
-                unit=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+                unit=UnitOfDensity.MICROGRAMS_PER_CUBIC_METER,
                 device_class=SensorDeviceClass.PM25,
                 state_class=SensorStateClass.MEASUREMENT,
             ),
             ApplianceSensor(
                 name="PM10",
                 attr="PM10",
-                unit=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+                unit=UnitOfDensity.MICROGRAMS_PER_CUBIC_METER,
                 device_class=SensorDeviceClass.PM10,
                 state_class=SensorStateClass.MEASUREMENT,
             ),
@@ -728,15 +727,29 @@ class Appliance:
 
     @property
     def preset_modes(self) -> list[WorkMode]:
+        # Derive the available modes from what the appliance actually reports
+        # in its capabilities instead of a hardcoded per-model list. The Muju
+        # (AEG PURE5000) reports Auto/Manual/Quiet/PowerOff and does not
+        # support "Smart", so the hardcoded list made the integration send an
+        # unsupported work mode that the API rejected (HTTP 406), leaving the
+        # fan uncontrollable.
+        valid_modes = {mode.value for mode in WorkMode}
+        workmode_values = self.capabilities.get("Workmode", {}).get("values")
+        if workmode_values:
+            return [
+                WorkMode(value) for value in workmode_values if value in valid_modes
+            ]
         if self.model == Model.Muju:
-            return [WorkMode.SMART, WorkMode.QUITE, WorkMode.MANUAL, WorkMode.OFF]
+            return [WorkMode.AUTO, WorkMode.QUITE, WorkMode.MANUAL, WorkMode.OFF]
         return [WorkMode.AUTO, WorkMode.MANUAL, WorkMode.OFF]
 
     def work_mode_from_preset_mode(self, preset_mode: str | None) -> WorkMode:
         if preset_mode:
             return WorkMode(preset_mode)
-        if self.model == Model.Muju:
-            return WorkMode.SMART
+        presets = self.preset_modes
+        for mode in (WorkMode.AUTO, WorkMode.SMART, WorkMode.MANUAL):
+            if mode in presets:
+                return mode
         return WorkMode.AUTO
 
     @property
