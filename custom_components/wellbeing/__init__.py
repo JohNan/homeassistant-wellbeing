@@ -5,10 +5,12 @@ For more details about this integration, please refer to
 https://github.com/JohNan/homeassistant-wellbeing
 """
 
+import asyncio
 import logging
 from datetime import timedelta
+from time import monotonic
 
-from aiohttp import ClientResponseError
+from aiohttp import ClientResponseError, ClientSession
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_ACCESS_TOKEN, CONF_API_KEY, Platform
 from homeassistant.core import HomeAssistant
@@ -30,6 +32,7 @@ from .const import (
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 AUTH_ERROR_STATUSES = {401, 403}
+STATE_RETRY_COOLDOWN = 300
 PLATFORMS = [
     Platform.SENSOR,
     Platform.FAN,
@@ -58,7 +61,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     token_manager = WellBeingTokenManager(hass, entry)
     try:
-        hub = ElectroluxHubAPI(
+        hub = WellbeingHubAPI(
             session=async_get_clientsession(hass), token_manager=token_manager
         )
     except Exception as exception:
@@ -111,6 +114,7 @@ class WellbeingDataUpdateCoordinator(DataUpdateCoordinator):
     ) -> None:
         """Initialize."""
         self.api = client
+        self._next_state_retry = float("-inf")
         super().__init__(
             hass,
             _LOGGER,
@@ -122,12 +126,27 @@ class WellbeingDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self):
         """Update data via library."""
         try:
-            appliances = await self.api.async_get_appliances()
-            return {"appliances": appliances}
+            try:
+                appliances = await self.api.async_get_appliances()
+            except ClientResponseError as error:
+                authorization = error.request_info.headers.get("Authorization", "")
+                now = monotonic()
+                if (
+                    not _is_state_forbidden(error)
+                    or now < self._next_state_retry
+                    or not authorization.startswith("Bearer ")
+                ):
+                    raise
+                self._next_state_retry = now + STATE_RETRY_COOLDOWN
+                await self.api._hub.async_get_access_token(
+                    rejected_token=authorization.removeprefix("Bearer ")
+                )
+                appliances = await self.api.async_get_appliances()
         except Exception as exception:
             if _is_authentication_error(exception):
                 raise ConfigEntryAuthFailed from exception
             raise UpdateFailed(exception) from exception
+        return {"appliances": appliances}
 
     async def _listen_for_changes(self):
         """Listen to live stream for changes."""
@@ -154,10 +173,15 @@ class WellBeingTokenManager(TokenManager):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
         self._hass = hass
         self._entry = entry
+        self.force_refresh = False
         api_key = entry.data.get(CONF_API_KEY)
         refresh_token = entry.data.get(CONF_REFRESH_TOKEN)
         access_token = entry.data.get(CONF_ACCESS_TOKEN)
         super().__init__(access_token, refresh_token, api_key)
+
+    def is_token_valid(self) -> bool:
+        """Let the SDK renew a locally valid token if a state read rejected it."""
+        return not self.force_refresh and super().is_token_valid()
 
     def update(self, access_token: str, refresh_token: str, api_key: str | None = None):
         super().update(access_token, refresh_token, api_key)
@@ -187,6 +211,29 @@ class WellBeingTokenManager(TokenManager):
             return token[:5] + "*****" + token[-5:]
 
 
+class WellbeingHubAPI(ElectroluxHubAPI):
+    """Serialize token refreshes shared by polling and other API calls."""
+
+    def __init__(self, session: ClientSession, token_manager: WellBeingTokenManager):
+        super().__init__(session, token_manager)
+        self._refresh_lock = asyncio.Lock()
+
+    async def async_get_access_token(self, *, rejected_token: str | None = None) -> str:
+        async with self._refresh_lock:
+            self.token_manager.force_refresh = (
+                rejected_token is not None
+                and rejected_token == self.token_manager.access_token
+            )
+            try:
+                return await super().async_get_access_token()
+            finally:
+                self.token_manager.force_refresh = False
+
+
+def _is_state_forbidden(error: ClientResponseError) -> bool:
+    return error.status == 403 and error.request_info.real_url.path.endswith("/state")
+
+
 def _is_authentication_error(exception: BaseException) -> bool:
     """Return whether an exception chain contains an HTTP auth failure."""
     seen: set[int] = set()
@@ -197,6 +244,7 @@ def _is_authentication_error(exception: BaseException) -> bool:
         if (
             isinstance(current, ClientResponseError)
             and current.status in AUTH_ERROR_STATUSES
+            and not _is_state_forbidden(current)
         ):
             return True
         current = current.__cause__ or current.__context__
