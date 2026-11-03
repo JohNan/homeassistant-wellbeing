@@ -30,7 +30,7 @@ async def test_setup_unload_entry(hass):
 
     # Mock the API client and update coordinator requests
     with (
-        patch("custom_components.wellbeing.ElectroluxHubAPI") as mock_hub_class,
+        patch("custom_components.wellbeing.WellbeingHubAPI") as mock_hub_class,
         patch(
             "custom_components.wellbeing.WellbeingApiClient.async_get_appliances"
         ) as mock_get_appliances,
