@@ -62,7 +62,7 @@ async def async_setup_entry(hass, entry, async_add_devices):
 class WellbeingClimate(WellbeingEntity, ClimateEntity):
     """Wellbeing Climate class."""
 
-    _attr_temperature_unit = UnitOfTemperature.CELSIUS
+    _attr_native_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_target_temperature_step = 1.0
     _attr_min_temp = 16.0
     _attr_max_temp = 32.0
@@ -112,18 +112,23 @@ class WellbeingClimate(WellbeingEntity, ClimateEntity):
         return None
 
     @property
-    def current_temperature(self) -> float | None:
+    def native_current_temperature(self) -> float | None:
         """Return the current temperature."""
         return self.get_appliance.get_entity(
             Platform.SENSOR, "ambientTemperatureC"
         ).state
 
     @property
-    def target_temperature(self) -> float | None:
+    def native_target_temperature(self) -> float | None:
         """Return the temperature we try to reach."""
         return self.get_appliance.get_entity(
             Platform.SENSOR, "targetTemperatureC"
         ).state
+
+    if not hasattr(ClimateEntity, "native_temperature_unit"):
+        _attr_temperature_unit = _attr_native_temperature_unit
+        current_temperature = native_current_temperature
+        target_temperature = native_target_temperature
 
     @property
     def fan_mode(self) -> str | None:
