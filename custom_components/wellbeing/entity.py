@@ -85,9 +85,25 @@ class WellbeingEntity(CoordinatorEntity):
             self.async_write_ha_state()
 
     async def async_refresh_later(self, delay: float | None = None) -> None:
-        """Request a coordinator refresh once the appliance has caught up."""
-        await asyncio.sleep(self.REFRESH_DELAY if delay is None else delay)
-        await self.coordinator.async_request_refresh()
+        """Schedule a coordinator refresh once the appliance has caught up.
+
+        Returns immediately so service calls are not held for the delay; the
+        optimistic state covers the gap, and live stream events (when enabled)
+        update the entities as soon as the cloud reports the change.
+        """
+        wait = self.REFRESH_DELAY if delay is None else delay
+
+        if self.hass is None:
+            await self.coordinator.async_request_refresh()
+            return
+
+        async def _refresh() -> None:
+            await asyncio.sleep(wait)
+            await self.coordinator.async_request_refresh()
+
+        self.hass.async_create_background_task(
+            _refresh(), f"wellbeing_refresh_{self.entity_id}"
+        )
 
     @property
     def device_class(self) -> str | None:
