@@ -78,9 +78,11 @@ filter life, ionizer and safety lock switches) it exposes:
 
 - `climate` **Heater**: `off` powers the appliance down, `fan_only` purifies
   without heating, `heat` turns the heater on. The target temperature range
-  comes from the API (22-26 °C in steps of 2 on the EP91-67UGA). The appliance
-  rejects a target temperature while heating is off, so setting one also turns
-  heating on.
+  comes from the API (22-26 °C in steps of 2 on the EP91-67UGA). Setting a
+  target first turns heating on, but note that the EP91-67UGA cloud rejects
+  every `TemperatureTarget` command with "Capability not found" even though
+  the capability is listed as writable, so on that model the target can only
+  be changed on the appliance itself and Home Assistant reports an error.
 - `switch` **UV Water Sterilisation** and **Quiet Fan**: these properties use
   `"on"`/`"off"` strings; the integration converts them. Quiet fan can only be
   changed while the work mode is `Auto`, and it is mutually exclusive with

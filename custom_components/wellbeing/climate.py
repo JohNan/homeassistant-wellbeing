@@ -3,6 +3,7 @@
 import logging
 from typing import Any
 
+from aiohttp import ClientResponseError
 from homeassistant.components.climate import (
     FAN_AUTO,
     FAN_HIGH,
@@ -14,6 +15,7 @@ from homeassistant.components.climate import (
     HVACMode,
 )
 from homeassistant.const import ATTR_TEMPERATURE, Platform, UnitOfTemperature
+from homeassistant.exceptions import HomeAssistantError
 
 from .api import WorkMode
 from .const import DOMAIN
@@ -281,20 +283,23 @@ class WellbeingHeaterClimate(WellbeingEntity, ClimateEntity):
 
     async def _ensure_powered_on(self) -> None:
         if self._is_powered_off:
-            await self.api.set_work_mode(
-                self.pnc_id, self.get_appliance.work_mode_from_preset_mode(None)
-            )
+            mode = self.get_appliance.work_mode_from_preset_mode(None)
+            await self.api.set_work_mode(self.pnc_id, mode)
+            self.get_appliance.set_mode(mode)
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new target hvac mode."""
         if hvac_mode == HVACMode.OFF:
             await self.api.set_work_mode(self.pnc_id, WorkMode.OFF)
+            self.get_appliance.set_mode(WorkMode.OFF)
+            if self.hass is not None:
+                self.async_write_ha_state()
         else:
             await self._ensure_powered_on()
-            await self.api.set_property(
-                self.pnc_id, HEATER_ATTR, hvac_mode == HVACMode.HEAT
-            )
-        await self.coordinator.async_request_refresh()
+            heating = hvac_mode == HVACMode.HEAT
+            await self.api.set_property(self.pnc_id, HEATER_ATTR, heating)
+            self.set_optimistic_state(Platform.BINARY_SENSOR, HEATER_ATTR, heating)
+        await self.async_refresh_later()
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Set new target temperature."""
@@ -304,9 +309,21 @@ class WellbeingHeaterClimate(WellbeingEntity, ClimateEntity):
             await self._ensure_powered_on()
             if not self._is_heating:
                 await self.api.set_property(self.pnc_id, HEATER_ATTR, True)
+                self.set_optimistic_state(Platform.BINARY_SENSOR, HEATER_ATTR, True)
             value = int(temp) if float(temp).is_integer() else float(temp)
-            await self.api.set_property(self.pnc_id, "TemperatureTarget", value)
-        await self.coordinator.async_request_refresh()
+            try:
+                await self.api.set_property(self.pnc_id, "TemperatureTarget", value)
+            except ClientResponseError as error:
+                # The EP91-67UGA lists TemperatureTarget as writable but the
+                # cloud rejects every command for it ("Capability not found").
+                if error.status == 406:
+                    raise HomeAssistantError(
+                        "The appliance rejected the target temperature; this model "
+                        "only allows changing it on the appliance itself"
+                    ) from error
+                raise
+            self.set_optimistic_state(Platform.SENSOR, "TemperatureTarget", value)
+        await self.async_refresh_later()
 
     async def async_turn_on(self) -> None:
         """Turn the heater on."""

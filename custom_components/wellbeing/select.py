@@ -53,4 +53,6 @@ class WellbeingSelect(WellbeingEntity, SelectEntity):
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
         await self.api.set_property(self.pnc_id, self.entity_attr, option)
-        await self.coordinator.async_request_refresh()
+        self.set_optimistic_state(Platform.SELECT, self.entity_attr, option)
+        self.set_optimistic_state(Platform.SENSOR, self.entity_attr, option)
+        await self.async_refresh_later()

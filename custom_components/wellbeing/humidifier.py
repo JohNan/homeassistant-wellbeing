@@ -92,14 +92,17 @@ class WellbeingHumidifier(WellbeingEntity, HumidifierEntity):
                 self.pnc_id, self.get_appliance.work_mode_from_preset_mode(None)
             )
         await self.api.set_property(self.pnc_id, HUMIDIFIER_ATTR, True)
-        await self.coordinator.async_request_refresh()
+        self.set_optimistic_state(Platform.BINARY_SENSOR, HUMIDIFIER_ATTR, True)
+        await self.async_refresh_later()
 
     async def async_turn_off(self, **kwargs) -> None:
         """Turn humidification off."""
         await self.api.set_property(self.pnc_id, HUMIDIFIER_ATTR, False)
-        await self.coordinator.async_request_refresh()
+        self.set_optimistic_state(Platform.BINARY_SENSOR, HUMIDIFIER_ATTR, False)
+        await self.async_refresh_later()
 
     async def async_set_humidity(self, humidity: int) -> None:
         """Set the target humidity."""
         await self.api.set_property(self.pnc_id, HUMIDITY_TARGET_ATTR, int(humidity))
-        await self.coordinator.async_request_refresh()
+        self.set_optimistic_state(Platform.SENSOR, HUMIDITY_TARGET_ATTR, int(humidity))
+        await self.async_refresh_later()

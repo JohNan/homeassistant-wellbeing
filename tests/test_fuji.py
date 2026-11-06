@@ -216,6 +216,17 @@ def test_powered_off_appliance_reports_off_mode():
     assert appliance.mode == WorkMode.OFF
 
 
+def test_display_name_falls_back_to_model_for_non_latin_names():
+    """Chinese appliance names use the model name for device and entity ids."""
+    appliance = _fuji_appliance(name="空氣清淨機")
+    assert appliance.display_name == "Fuji"
+    appliance.model_name = "EP91-67UGA"
+    assert appliance.display_name == "EP91-67UGA"
+    latin = _fuji_appliance(name="Living room purifier")
+    latin.model_name = "EP91-67UGA"
+    assert latin.display_name == "Living room purifier"
+
+
 def test_unknown_workmode_does_not_break_setup():
     """A work mode the integration does not know falls back to UNDEFINED."""
     appliance = Appliance("Purifier", "pnc_x", "Fuji")

@@ -303,6 +303,19 @@ class Appliance:
         self.model = Model(model)
         self.pnc_id = pnc_id
         self.name = name
+        self.model_name: str | None = None
+
+    @property
+    def display_name(self) -> str:
+        """Name used for the Home Assistant device and entity ids.
+
+        Appliance names without Latin letters or digits (e.g. the default
+        Chinese "空氣清淨機") would be transliterated into unreadable entity
+        ids, so fall back to the model name for those.
+        """
+        if any(char.isascii() and char.isalnum() for char in str(self.name)):
+            return self.name
+        return self.model_name or self.model.value
 
     @staticmethod
     def _create_entities(data):
@@ -1124,6 +1137,11 @@ class WellbeingApiClient:
             app.brand = appliance.brand
             app.serialNumber = appliance.serial_number
             app.device = appliance.device_type
+            try:
+                model_name = appliance.model
+            except (AttributeError, KeyError, TypeError):
+                model_name = None
+            app.model_name = model_name if isinstance(model_name, str) else None
 
             data = appliance.state
             data["status"] = appliance.state_data.get("status", "unknown")

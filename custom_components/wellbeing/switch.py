@@ -1,6 +1,7 @@
 """Switch platform for Wellbeing."""
 
 from homeassistant.components.switch import SwitchEntity
+from homeassistant.const import Platform
 
 from .const import DOMAIN
 from .entity import WellbeingEntity
@@ -39,9 +40,11 @@ class WellbeingSwitch(WellbeingEntity, SwitchEntity):
     async def async_turn_on(self, **kwargs):
         """Turn the switch on."""
         await self.coordinator.api.set_feature_state(self.pnc_id, self._function, True)
-        await self.coordinator.async_request_refresh()
+        self.set_optimistic_state(Platform.BINARY_SENSOR, self._function, True)
+        await self.async_refresh_later()
 
     async def async_turn_off(self, **kwargs):
         """Turn the switch off."""
         await self.coordinator.api.set_feature_state(self.pnc_id, self._function, False)
-        await self.coordinator.async_request_refresh()
+        self.set_optimistic_state(Platform.BINARY_SENSOR, self._function, False)
+        await self.async_refresh_later()
