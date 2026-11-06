@@ -426,6 +426,12 @@ async def test_fuji_platforms(hass):
             blocking=True,
         )
         mock_api.send_command.assert_any_call({"Heating": True})
+        # The Heating entities follow the preset immediately.
+        assert (
+            hass.states.get("binary_sensor.wellbeing_fuji_purifier_heating").state
+            == "on"
+        )
+        assert hass.states.get(climate_id).state == "heat"
         mock_api.state = {**FUJI_STATE, "Heating": True, "Workmode": "Manual"}
         mock_api.send_command.reset_mock()
         await hass.services.async_call(

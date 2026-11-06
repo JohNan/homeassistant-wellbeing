@@ -129,9 +129,20 @@ class WellbeingFan(WellbeingEntity, FanEntity):
         self._preset_mode = WorkMode(preset_mode)
 
         self.get_appliance.set_mode(self._preset_mode)
+        self._set_optimistic_features(self._preset_mode)
         self.async_write_ha_state()
         await self.api.set_work_mode(self.pnc_id, self._preset_mode)
         await self.async_refresh_later()
+
+    def _set_optimistic_features(self, mode: WorkMode) -> None:
+        """Mirror the virtual Heat / Quiet presets onto their properties."""
+        appliance = self.get_appliance
+        if appliance.has_capability("Heating"):
+            appliance.set_optimistic("Heating", mode == WorkMode.HEAT)
+        if appliance.has_capability("QuietFan"):
+            appliance.set_optimistic(
+                "QuietFan", "on" if mode == WorkMode.QUITE else "off"
+            )
 
     @property
     def is_on(self):
