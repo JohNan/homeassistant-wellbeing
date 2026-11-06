@@ -3,8 +3,10 @@
 import asyncio
 import logging
 from enum import StrEnum
+from time import monotonic
 
 import voluptuous as vol
+from aiohttp import ClientResponseError
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.components.vacuum import Segment
@@ -20,6 +22,25 @@ from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.typing import UNDEFINED
 from pyelectroluxgroup.api import ElectroluxHubAPI
 from pyelectroluxgroup.appliance import Appliance as ApiAppliance
+
+# How long a value set from Home Assistant is kept over what the cloud
+# reports, until the cloud confirms it. The Electrolux cloud lags the
+# appliance by 15-20 s and live stream events for other properties would
+# otherwise overwrite the optimistic value in the meantime.
+OPTIMISTIC_TTL = 25
+
+
+def _normalize(value):
+    """Normalize reported values so optimistic and cloud values compare."""
+    if isinstance(value, str):
+        lowered = value.casefold()
+        if lowered in ("on", "true"):
+            return True
+        if lowered in ("off", "false"):
+            return False
+        return lowered
+    return value
+
 
 FILTER_TYPE = {
     48: "BREEZE Complete air filter",
@@ -105,6 +126,9 @@ class Model(StrEnum):
     Cybele = "Cybele"
     COMFORT600 = "COMFORT600"
     AZUL = "Azul"
+    FUJI = (
+        "Fuji"  # Air purifier with heater and humidifier (e.g. Taiwan 冷暖空氣清淨機)
+    )
 
 
 class WorkMode(StrEnum):
@@ -114,6 +138,8 @@ class WorkMode(StrEnum):
     SMART = "Smart"
     QUITE = "Quiet"
     AUTO = "Auto"
+    # Virtual preset for purifiers with a heater (Heating property, e.g. Fuji).
+    HEAT = "Heat"
 
 
 class LouverSwingMode(StrEnum):
@@ -198,6 +224,7 @@ class ApplianceBinary(ApplianceEntity):
     def state(self):
         if isinstance(self._state, str):
             return self._state.casefold() in {
+                "active",
                 "connected",
                 "enabled",
                 "on",
@@ -213,6 +240,49 @@ class ApplianceClimate(ApplianceEntity):
 
     def __init__(self, name, attr) -> None:
         super().__init__(name, attr)
+
+
+class ApplianceHumidifier(ApplianceEntity):
+    entity_type: int = Platform.HUMIDIFIER
+
+    def __init__(self, name, attr) -> None:
+        super().__init__(name, attr)
+
+
+class ApplianceSelect(ApplianceEntity):
+    entity_type: int = Platform.SELECT
+
+    def __init__(
+        self,
+        name,
+        attr,
+        options: list[str] | None = None,
+        entity_category: EntityCategory = UNDEFINED,
+    ) -> None:
+        super().__init__(name, attr, None, entity_category)
+        self.options = options or []
+
+
+class ApplianceErrorBinary(ApplianceBinary):
+    """Aggregated problem sensor: on while any of the appliance's error flags is active."""
+
+    def __init__(self, name, attr, error_attrs: list[str]) -> None:
+        super().__init__(
+            name, attr, BinarySensorDeviceClass.PROBLEM, EntityCategory.DIAGNOSTIC
+        )
+        self.error_attrs = error_attrs
+        # The entity is created whenever the first error flag is reported.
+        self.source_attr = error_attrs[0]
+        self.active_errors: list[str] = []
+
+    def setup(self, data):
+        self.active_errors = [
+            error
+            for error in self.error_attrs
+            if str(data.get(error, "")).casefold() == "active"
+        ]
+        self._state = bool(self.active_errors)
+        return self
 
 
 class ApplianceConsumableSensor(ApplianceSensor):
@@ -256,6 +326,25 @@ class Appliance:
         self.model = Model(model)
         self.pnc_id = pnc_id
         self.name = name
+        self.model_name: str | None = None
+        # The appliance's own Workmode; `mode` may be a virtual preset
+        # (Heat / Quiet / PowerOff) derived from other properties.
+        self.work_mode_raw: WorkMode = WorkMode.UNDEFINED
+        self.capabilities = {}
+        self._optimistic: dict[str, tuple[object, float]] = {}
+        self._optimistic_mode: tuple[WorkMode, float] | None = None
+
+    @property
+    def display_name(self) -> str:
+        """Name used for the Home Assistant device and entity ids.
+
+        Appliance names without Latin letters or digits (e.g. the default
+        Chinese "空氣清淨機") would be transliterated into unreadable entity
+        ids, so fall back to the model name for those.
+        """
+        if any(char.isascii() and char.isalnum() for char in str(self.name)):
+            return self.name
+        return self.model_name or self.model.value
 
     @staticmethod
     def _create_entities(data):
@@ -579,6 +668,74 @@ class Appliance:
             ),
         ]
 
+        # Fuji: air purifier with heater and humidifier. Humidification,
+        # HumidityTarget, LouverSwing, AQILight and WaterTrayLevelLow are
+        # shared with the Pure Multi 700 definitions above.
+        fuji_error_flags = sorted(key for key in data if key.startswith("Err"))
+        fuji_entities = [
+            ApplianceSensor(
+                name="Air Quality",
+                attr="AQILevel",
+                device_class=SensorDeviceClass.ENUM,
+            ),
+            # No temperature device class: HomeKit links the device's
+            # temperature-class sensor to the air purifier accessory and
+            # must pick the ambient "Temp" sensor, not the target.
+            ApplianceSensor(
+                name="Target Temperature",
+                attr="TemperatureTarget",
+                unit=UnitOfTemperature.CELSIUS,
+            ),
+            ApplianceSensor(
+                name="PM Leading Mode",
+                attr="PMLeadingMode",
+                device_class=SensorDeviceClass.ENUM,
+                entity_category=EntityCategory.DIAGNOSTIC,
+            ),
+            ApplianceBinary(
+                name="Heating",
+                attr="Heating",
+                device_class=BinarySensorDeviceClass.HEAT,
+            ),
+            ApplianceBinary(name="Quiet Fan", attr="QuietFan"),
+            ApplianceBinary(
+                name="UV Water Sterilisation",
+                attr="UVWaterState",
+                device_class=BinarySensorDeviceClass.RUNNING,
+            ),
+            ApplianceBinary(
+                name="Monitoring",
+                attr="Monitoring",
+                entity_category=EntityCategory.DIAGNOSTIC,
+            ),
+            ApplianceClimate(name="Heater", attr="Heating"),
+            ApplianceHumidifier(name="Humidifier", attr="Humidification"),
+            ApplianceSelect(
+                name="Louver Swing",
+                attr="LouverSwing",
+                options=[mode.value for mode in LouverSwingMode],
+                entity_category=EntityCategory.CONFIG,
+            ),
+            ApplianceSelect(
+                name="PM Leading Mode",
+                attr="PMLeadingMode",
+                options=["PM1", "PM2.5", "PM10"],
+                entity_category=EntityCategory.CONFIG,
+            ),
+            ApplianceSelect(
+                name="AQI Light",
+                attr="AQILight",
+                options=["ambient", "on", "off"],
+                entity_category=EntityCategory.CONFIG,
+            ),
+        ]
+        if fuji_error_flags:
+            fuji_entities.append(
+                ApplianceErrorBinary(
+                    name="Error", attr="ErrorActive", error_attrs=fuji_error_flags
+                )
+            )
+
         ac_entities = [
             ApplianceClimate(name="Climate", attr="mode"),
             ApplianceSensor(
@@ -604,6 +761,7 @@ class Appliance:
             + vacuum_700_series_entities
             + vacuum_hygienic_700_entities
             + ac_entities
+            + fuji_entities
         )
 
     def get_entity(self, entity_type, entity_attr):
@@ -613,6 +771,16 @@ class Appliance:
             if entity.attr == entity_attr and entity.entity_type == entity_type
         )
 
+    def get_entity_or_none(self, entity_type, entity_attr):
+        return next(
+            (
+                entity
+                for entity in self.entities
+                if entity.attr == entity_attr and entity.entity_type == entity_type
+            ),
+            None,
+        )
+
     def has_capability(self, capability) -> bool:
         capability_data = self.capabilities.get(capability)
         return (
@@ -620,14 +788,78 @@ class Appliance:
             and capability_data.get("access") == "readwrite"
         )
 
+    def capability_range(
+        self,
+        capability: str,
+        default_min: float,
+        default_max: float,
+        default_step: float,
+    ) -> tuple[float, float, float]:
+        """Return (min, max, step) for a numeric capability, with fallbacks."""
+        capability_data = self.capabilities.get(capability)
+        if not isinstance(capability_data, dict):
+            return default_min, default_max, default_step
+        minimum = capability_data.get("min", default_min)
+        maximum = capability_data.get("max", default_max)
+        step = capability_data.get("step", default_step)
+        if (
+            isinstance(minimum, (int, float))
+            and isinstance(maximum, (int, float))
+            and isinstance(step, (int, float))
+            and minimum <= maximum
+            and step > 0
+        ):
+            return minimum, maximum, step
+        return default_min, default_max, default_step
+
+    def capability_values(self, capability: str, default: list[str]) -> list[str]:
+        """Return the accepted values of a capability, with fallbacks."""
+        capability_data = self.capabilities.get(capability)
+        if isinstance(capability_data, dict):
+            values = capability_data.get("values")
+            if isinstance(values, dict) and values:
+                return [str(value) for value in values]
+            if isinstance(values, list) and values:
+                return [str(value) for value in values]
+        return default
+
     def clear_mode(self):
         self.mode = WorkMode.UNDEFINED
+        self._optimistic_mode = None
 
     def set_mode(self, mode: WorkMode):
+        """Set the mode optimistically until the cloud confirms it."""
         self.mode = mode
+        self._optimistic_mode = (mode, monotonic() + OPTIMISTIC_TTL)
+
+    def set_optimistic(self, attr: str, value) -> None:
+        """Keep a value sent to the appliance until the cloud confirms it."""
+        self._optimistic[attr] = (value, monotonic() + OPTIMISTIC_TTL)
+        for entity in self.entities:
+            if entity.attr == attr:
+                entity._state = value
+
+    def _apply_optimistic(self, data) -> None:
+        now = monotonic()
+        if self._optimistic_mode is not None:
+            mode, expires = self._optimistic_mode
+            if now > expires or self.mode == mode:
+                self._optimistic_mode = None
+            else:
+                self.mode = mode
+        for attr, (value, expires) in list(self._optimistic.items()):
+            if now > expires or (
+                attr in data and _normalize(data[attr]) == _normalize(value)
+            ):
+                del self._optimistic[attr]
+                continue
+            for entity in self.entities:
+                if entity.attr == attr:
+                    entity._state = value
 
     def setup(self, data, capabilities):
         self.reported_state = data
+        self.capabilities = capabilities
         self.firmware = ""
         if "FrmVer_NIU" in data:
             self.firmware = data.get("FrmVer_NIU")
@@ -638,9 +870,25 @@ class Appliance:
         if "firmwareVersion" in data:
             self.firmware = data.get("firmwareVersion")
         if "Workmode" in data:
-            self.mode = WorkMode(data.get("Workmode"))
+            try:
+                self.work_mode_raw = WorkMode(data.get("Workmode"))
+            except ValueError:
+                _LOGGER.debug("Unknown Workmode %s", data.get("Workmode"))
+                self.work_mode_raw = WorkMode.UNDEFINED
+            self.mode = self.work_mode_raw
         elif "mode" in data:
             self.mode = data.get("mode")
+        appliance_state = data.get("applianceState")
+        if "Workmode" in data:
+            if isinstance(appliance_state, str) and appliance_state.casefold() == "off":
+                # Models powered via executeCommand keep their last Workmode while off.
+                self.mode = WorkMode.OFF
+            elif data.get("Heating") is True and self.has_capability("Heating"):
+                self.mode = WorkMode.HEAT
+            elif str(
+                data.get("QuietFan", "")
+            ).casefold() == "on" and self.has_capability("QuietFan"):
+                self.mode = WorkMode.QUITE
         if "LouverSwingWorkmode" in data:
             self.louver_swing_mode = LouverSwingMode(data.get("LouverSwing"))
         if "powerMode" in data:
@@ -650,21 +898,38 @@ class Appliance:
         if "vacuumMode" in data:
             self.vacuum_mode = data.get("vacuumMode")
 
-        self.capabilities = capabilities
         self.entities = [
             entity.setup(data)
             for entity in Appliance._create_entities(data)
             if entity.source_attr in data
         ]
+        self._apply_optimistic(data)
+
+    @property
+    def is_manual_fan_control(self) -> bool:
+        """Whether the fan speed can be set without changing the work mode."""
+        return self.work_mode_raw == WorkMode.MANUAL
 
     @property
     def preset_modes(self) -> list[WorkMode]:
         # Derive the available modes from what the appliance actually reports
         # in its capabilities instead of a hardcoded per-model list.
-        valid_modes = {mode.value for mode in WorkMode}
+        valid_modes = {mode.value.casefold(): mode for mode in WorkMode}
         workmode_values = (self.capabilities.get("Workmode") or {}).get("values") or {}
-        modes = [WorkMode(value) for value in workmode_values if value in valid_modes]
+        modes = [
+            valid_modes[str(value).casefold()]
+            for value in workmode_values
+            if str(value).casefold() in valid_modes
+        ]
         if modes:
+            # Virtual presets for feature toggles; HomeKit shows them as
+            # switches inside the air purifier accessory.
+            if self.has_capability("Heating") and WorkMode.HEAT not in modes:
+                modes.append(WorkMode.HEAT)
+            if self.has_capability("QuietFan") and WorkMode.QUITE not in modes:
+                modes.append(WorkMode.QUITE)
+            if WorkMode.OFF not in modes and not self.supports_execute_command:
+                modes.append(WorkMode.OFF)
             return modes
         if self.model == Model.Muju:
             return [WorkMode.AUTO, WorkMode.QUITE, WorkMode.MANUAL, WorkMode.OFF]
@@ -680,12 +945,30 @@ class Appliance:
         return WorkMode.AUTO
 
     @property
+    def supports_execute_command(self) -> bool:
+        """Whether power is controlled with executeCommand on/off (e.g. Fuji)."""
+        capability = self.capabilities.get("executeCommand")
+        return isinstance(capability, dict)
+
+    def work_mode_command_value(self, mode: WorkMode) -> str:
+        """Return the Workmode value the appliance accepts for a mode.
+
+        Some appliances (Fuji) report "Auto" but only accept "auto".
+        """
+        workmode_values = (self.capabilities.get("Workmode") or {}).get("values") or {}
+        for value in workmode_values:
+            if str(value).casefold() == mode.value.casefold():
+                return str(value)
+        return mode.value
+
+    @property
     def speed_range(self) -> tuple[int, int]:
         fan_speed = self.capabilities.get("Fanspeed", {})
         minimum = fan_speed.get("min")
         maximum = fan_speed.get("max")
         if isinstance(minimum, int) and isinstance(maximum, int) and minimum <= maximum:
-            return minimum, maximum
+            # Speed 0 is "stopped"; Home Assistant models that as off.
+            return max(minimum, 1), max(maximum, 1)
 
         ## Electrolux Devices:
         if self.model == Model.Muju:
@@ -798,6 +1081,26 @@ class Appliance:
                     self.eco_mode = FAN_SPEEDS_PUREI9.get(speed, self.eco_mode)
 
 
+def _is_writable(capabilities: dict, name: str) -> bool:
+    capability = capabilities.get(name)
+    return isinstance(capability, dict) and capability.get("access") == "readwrite"
+
+
+def _api_capabilities(appliance: ApiAppliance) -> dict:
+    """Capabilities of a pyelectroluxgroup appliance, or {} when unavailable."""
+    capabilities = getattr(appliance, "capabilities_data", None)
+    return capabilities if isinstance(capabilities, dict) else {}
+
+
+def _api_reported(appliance: ApiAppliance) -> dict:
+    """Reported state of a pyelectroluxgroup appliance, or {} when unavailable."""
+    try:
+        state = appliance.state
+    except (KeyError, TypeError, AttributeError):
+        return {}
+    return state if isinstance(state, dict) else {}
+
+
 class Appliances:
     def __init__(self, appliances) -> None:
         self.appliances = appliances
@@ -897,6 +1200,7 @@ class WellbeingApiClient:
                 and appliance.device_type != "MULTI_AIR_PURIFIER"
                 and appliance.device_type != "DEHUMIDIFIER"
                 and appliance.device_type != "PORTABLE_AIR_CONDITIONER"
+                and model_name not in {model.value for model in Model}
             ):
                 continue
 
@@ -913,6 +1217,11 @@ class WellbeingApiClient:
             app.brand = appliance.brand
             app.serialNumber = appliance.serial_number
             app.device = appliance.device_type
+            try:
+                model_name = appliance.model
+            except (AttributeError, KeyError, TypeError):
+                model_name = None
+            app.model_name = model_name if isinstance(model_name, str) else None
 
             data = appliance.state
             data["status"] = appliance.state_data.get("status", "unknown")
@@ -1284,20 +1593,75 @@ class WellbeingApiClient:
         result = await appliance.send_command(data)
         _LOGGER.debug(f"Set Fan Speed: {result}")
 
-    async def set_work_mode(self, pnc_id: str, mode: WorkMode):
-        data = {"Workmode": mode.value}
+    async def set_work_mode(
+        self, pnc_id: str, mode: WorkMode, ha_appliance: Appliance | None = None
+    ):
         appliance = self._api_appliances.get(pnc_id, None)
         if appliance is None:
             _LOGGER.error(f"Failed to set work mode for appliance with id {pnc_id}")
             return
 
-        result = await appliance.send_command(data)
+        capabilities = _api_capabilities(appliance)
+        uses_execute_command = isinstance(capabilities.get("executeCommand"), dict)
+        workmode_values = (capabilities.get("Workmode") or {}).get("values") or {}
+        accepted = {str(value).casefold(): str(value) for value in workmode_values}
+
+        if mode == WorkMode.OFF and uses_execute_command and "poweroff" not in accepted:
+            result = await appliance.send_command({"executeCommand": "off"})
+            _LOGGER.debug(f"Power off: {result}")
+            return
+
+        reported = _api_reported(appliance)
+        if uses_execute_command and mode != WorkMode.OFF:
+            appliance_state = reported.get("applianceState")
+            if isinstance(appliance_state, str) and appliance_state.casefold() == "off":
+                result = await appliance.send_command({"executeCommand": "on"})
+                _LOGGER.debug(f"Power on: {result}")
+
+        heating_writable = _is_writable(capabilities, "Heating")
+        quiet_writable = _is_writable(capabilities, "QuietFan")
+        if mode == WorkMode.HEAT and heating_writable:
+            result = await appliance.send_command({"Heating": True})
+            _LOGGER.debug(f"Set heating on: {result}")
+            return
+        if mode == WorkMode.QUITE and quiet_writable:
+            # QuietFan is only accepted while the appliance is in Auto.
+            if str(reported.get("Workmode", "")).casefold() != "auto":
+                value = accepted.get("auto", WorkMode.AUTO.value)
+                result = await appliance.send_command({"Workmode": value})
+                _LOGGER.debug(f"Set work mode: {result}")
+            result = await appliance.send_command({"QuietFan": "on"})
+            _LOGGER.debug(f"Set quiet fan on: {result}")
+            return
+
+        # Leaving a virtual preset: clear the feature it stands for first. The
+        # cached state can lag the appliance by 15-20 s, so do not rely on it;
+        # the API answers 202 when the property already has that value.
+        if quiet_writable and (
+            str(reported.get("QuietFan", "")).casefold() == "on"
+            or str(reported.get("Workmode", "")).casefold() == "auto"
+        ):
+            try:
+                result = await appliance.send_command({"QuietFan": "off"})
+                _LOGGER.debug(f"Set quiet fan off: {result}")
+            except ClientResponseError as error:
+                # QuietFan is read-only outside Auto.
+                if error.status != 406:
+                    raise
+        if heating_writable:
+            result = await appliance.send_command({"Heating": False})
+            _LOGGER.debug(f"Set heating off: {result}")
+
+        value = accepted.get(mode.value.casefold(), mode.value)
+        result = await appliance.send_command({"Workmode": value})
         _LOGGER.debug(f"Set work mode: {result}")
 
     async def set_feature_state(self, pnc_id: str, feature: str, state: bool):
-        """Set the state of a feature (Ionizer, UILight, SafetyLock)."""
-        # Construct the command directly using the feature name
-        data = {feature: state}
+        """Set the state of a feature (Ionizer, UILight, SafetyLock, ...).
+
+        Boolean features take true/false; features reported as a string
+        (e.g. UVWaterState, QuietFan on the Fuji) take "on"/"off".
+        """
         appliance = self._api_appliances.get(pnc_id, None)
         if appliance is None:
             _LOGGER.error(
@@ -1305,8 +1669,24 @@ class WellbeingApiClient:
             )
             return
 
+        reported = _api_reported(appliance).get(feature)
+        value: bool | str = state
+        if isinstance(reported, str) and reported.casefold() in {"on", "off"}:
+            value = "on" if state else "off"
+        data = {feature: value}
+
         await appliance.send_command(data)
-        _LOGGER.debug(f"Set {feature} State to {state}")
+        _LOGGER.debug(f"Set {feature} State to {value}")
+
+    async def set_property(self, pnc_id: str, name: str, value):
+        """Send a single property command (e.g. TemperatureTarget, LouverSwing)."""
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            _LOGGER.error(f"Failed to set {name} for appliance with id {pnc_id}")
+            return
+
+        result = await appliance.send_command({name: value})
+        _LOGGER.debug(f"Set {name} to {value}: {result}")
 
     async def ac_set_temperature(self, pnc_id: str, temp: float):
         data = {"targetTemperatureC": temp}

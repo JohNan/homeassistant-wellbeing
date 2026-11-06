@@ -65,3 +65,49 @@ data:
         repetitions: 1
   command: clean_room
 ```
+
+## Air purifiers
+
+### Fuji (air purifier with heater)
+
+The Electrolux "Fuji" (e.g. EP91-67UGA, `applianceType` `Fuji`,
+`deviceType` `MULTI_AIR_PURIFIER`) is an air purifier with a built-in heater.
+Besides the usual purifier entities (fan with `Auto`/`Manual`/`PowerOff`
+presets, fan speed 1-9, PM1/PM2.5/PM10, TVOC, eCO2, temperature, humidity,
+filter life, ionizer and safety lock switches) it exposes:
+
+- `climate` **Heater**: `off` powers the appliance down, `fan_only` purifies
+  without heating, `heat` turns the heater on. The target temperature range
+  comes from the API (22-26 °C in steps of 2 on the EP91-67UGA). Setting a
+  target first turns heating on, but note that the EP91-67UGA cloud rejects
+  every `TemperatureTarget` command with "Capability not found" even though
+  the capability is listed as writable, so on that model the target can only
+  be changed on the appliance itself and Home Assistant reports an error.
+- `fan` presets `Auto`, `Manual`, **`Heat`** and **`Quiet`**: `Heat` and
+  `Quiet` are virtual presets for the `Heating` and `QuietFan` properties
+  (the appliance itself only has `auto`/`manual` work modes). Selecting
+  `Auto`/`Manual` clears them again; changing the speed while heating keeps
+  the heater on. With the HomeKit bridge the fan becomes one *Air Purifier*
+  accessory with the PM2.5, humidity and temperature sensors linked and the
+  presets shown as switches inside it, so the appliance appears as a single
+  device in the Home app (exclude the climate and switch entities from the
+  bridge to avoid duplicates).
+- `switch` **UV Water Sterilisation** and **Quiet Fan**: these properties use
+  `"on"`/`"off"` strings; the integration converts them. Quiet fan can only be
+  changed while the work mode is `Auto`, and it is mutually exclusive with
+  heating (the appliance disables one while the other is on).
+- `select` **Louver Swing**, **PM Leading Mode** and **AQI Light**: the options
+  are read from the capabilities (for example `off`/`swing`/`frontBack`/`front`).
+  A select is only created when the API reports the property as writable.
+- `sensor` **Air Quality** (`very_good` … `hazardous`), **Target Temperature**
+  and **PM Leading Mode**; `binary_sensor` **Heating**, **Empty Water Tray**
+  and an aggregated **Error** problem sensor whose `active_errors` attribute
+  lists the raised `Err*` flags.
+- `humidifier`: the firmware also reports `Humidification`/`HumidityTarget`.
+  A humidifier entity is only created on variants whose capabilities allow
+  writing `Humidification`; the EP91-67UGA does not have a humidifier.
+
+Power is switched with the `executeCommand` capability (`on`/`off`) rather
+than a `PowerOff` work mode, and `Workmode` commands must use the lower-case
+values listed in the capabilities (`auto`, `manual`) even though the state
+reports `Auto`/`Manual`; both are handled transparently.

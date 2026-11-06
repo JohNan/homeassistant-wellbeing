@@ -1,5 +1,7 @@
 """WellbeingEntity class"""
 
+import asyncio
+
 from homeassistant.const import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
@@ -25,7 +27,7 @@ class WellbeingEntity(CoordinatorEntity):
         self.config_entry = config_entry
         self.pnc_id = pnc_id
         expected_domain = self.__class__.__module__.split(".")[-1]
-        self.entity_id = f"{expected_domain}.{slugify(f'{DEFAULT_NAME}_{self.get_appliance.name}_{self.entity_attr}')}"
+        self.entity_id = f"{expected_domain}.{slugify(f'{DEFAULT_NAME}_{self.get_appliance.display_name}_{self.entity_attr}')}"
 
     @property
     def name(self):
@@ -47,12 +49,15 @@ class WellbeingEntity(CoordinatorEntity):
 
     @property
     def device_info(self):
+        appliance = self.get_appliance
+        model_name = getattr(appliance, "model_name", None)
         return {
             "identifiers": {(DOMAIN, self.pnc_id)},
-            "name": self.get_appliance.name,
-            "model": self.get_appliance.model,
-            "manufacturer": self.get_appliance.brand,
-            "sw_version": self.get_appliance.firmware,
+            "name": appliance.display_name,
+            "model": model_name or appliance.model,
+            "model_id": appliance.model.value,
+            "manufacturer": appliance.brand,
+            "sw_version": appliance.firmware,
         }
 
     @property
@@ -66,6 +71,38 @@ class WellbeingEntity(CoordinatorEntity):
                 if isinstance(value, dict) and value.get("access") == "readwrite"
             ],
         }
+
+    # The cloud takes a few seconds to report a command back; keep the local
+    # state in sync meanwhile and fetch the real state afterwards.
+    REFRESH_DELAY = 15
+
+    def set_optimistic_state(self, entity_type, entity_attr, value) -> None:
+        """Update the entities of a property locally until the cloud confirms."""
+        self.get_appliance.set_optimistic(entity_attr, value)
+        if self.hass is not None:
+            # Every entity of the appliance may show this property.
+            self.coordinator.async_update_listeners()
+
+    async def async_refresh_later(self, delay: float | None = None) -> None:
+        """Schedule a coordinator refresh once the appliance has caught up.
+
+        Returns immediately so service calls are not held for the delay; the
+        optimistic state covers the gap, and live stream events (when enabled)
+        update the entities as soon as the cloud reports the change.
+        """
+        wait = self.REFRESH_DELAY if delay is None else delay
+
+        if self.hass is None:
+            await self.coordinator.async_request_refresh()
+            return
+
+        async def _refresh() -> None:
+            await asyncio.sleep(wait)
+            await self.coordinator.async_request_refresh()
+
+        self.hass.async_create_background_task(
+            _refresh(), f"wellbeing_refresh_{self.entity_id}"
+        )
 
     @property
     def device_class(self) -> str | None:

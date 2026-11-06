@@ -3,6 +3,7 @@
 import logging
 from typing import Any
 
+from aiohttp import ClientResponseError
 from homeassistant.components.climate import (
     FAN_AUTO,
     FAN_HIGH,
@@ -14,7 +15,9 @@ from homeassistant.components.climate import (
     HVACMode,
 )
 from homeassistant.const import ATTR_TEMPERATURE, Platform, UnitOfTemperature
+from homeassistant.exceptions import HomeAssistantError
 
+from .api import WorkMode
 from .const import DOMAIN
 from .entity import WellbeingEntity
 
@@ -41,6 +44,12 @@ TO_ELECTROLUX_FAN = {v: k for k, v in FAN_MODES.items()}
 TO_ELECTROLUX_FAN[FAN_MEDIUM] = "middle"
 
 
+# Air purifiers with a heater (e.g. Fuji) expose a boolean "Heating"
+# property plus "TemperatureTarget"; they are not mode based like the ACs.
+HEATER_ATTR = "Heating"
+HEATER_DEFAULT_RANGE = (15.0, 30.0, 1.0)
+
+
 async def async_setup_entry(hass, entry, async_add_devices):
     """Setup climate platform."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
@@ -50,11 +59,17 @@ async def async_setup_entry(hass, entry, async_add_devices):
         for pnc_id, appliance in appliances.appliances.items():
             async_add_devices(
                 [
-                    WellbeingClimate(
-                        coordinator, entry, pnc_id, entity.entity_type, entity.attr
-                    )
+                    (
+                        WellbeingHeaterClimate
+                        if entity.attr == HEATER_ATTR
+                        else WellbeingClimate
+                    )(coordinator, entry, pnc_id, entity.entity_type, entity.attr)
                     for entity in appliance.entities
                     if entity.entity_type == Platform.CLIMATE
+                    and (
+                        entity.attr != HEATER_ATTR
+                        or appliance.has_capability(HEATER_ATTR)
+                    )
                 ]
             )
 
@@ -191,3 +206,129 @@ class WellbeingClimate(WellbeingEntity, ClimateEntity):
         """Turn the entity off."""
         await self.api.ac_turn_off(self.pnc_id)
         await self.coordinator.async_request_refresh()
+
+
+class WellbeingHeaterClimate(WellbeingEntity, ClimateEntity):
+    """Heater of an air purifier (Heating on/off + TemperatureTarget)."""
+
+    _attr_native_temperature_unit = UnitOfTemperature.CELSIUS
+    _attr_hvac_modes = [HVACMode.OFF, HVACMode.FAN_ONLY, HVACMode.HEAT]
+    _attr_supported_features = (
+        ClimateEntityFeature.TARGET_TEMPERATURE
+        | ClimateEntityFeature.TURN_OFF
+        | ClimateEntityFeature.TURN_ON
+    )
+
+    @property
+    def _range(self) -> tuple[float, float, float]:
+        return self.get_appliance.capability_range(
+            "TemperatureTarget", *HEATER_DEFAULT_RANGE
+        )
+
+    @property
+    def min_temp(self) -> float:
+        return self._range[0]
+
+    @property
+    def max_temp(self) -> float:
+        return self._range[1]
+
+    @property
+    def target_temperature_step(self) -> float:
+        return self._range[2]
+
+    @property
+    def _is_powered_off(self) -> bool:
+        return self.get_appliance.mode == WorkMode.OFF
+
+    @property
+    def _is_heating(self) -> bool:
+        entity = self.get_appliance.get_entity_or_none(
+            Platform.BINARY_SENSOR, HEATER_ATTR
+        )
+        return bool(entity.state) if entity is not None else False
+
+    @property
+    def hvac_mode(self) -> HVACMode:
+        """Return current hvac mode."""
+        if self._is_powered_off:
+            return HVACMode.OFF
+        return HVACMode.HEAT if self._is_heating else HVACMode.FAN_ONLY
+
+    @property
+    def hvac_action(self) -> HVACAction | None:
+        """Return the current running hvac operation."""
+        if self._is_powered_off:
+            return HVACAction.OFF
+        return HVACAction.HEATING if self._is_heating else HVACAction.FAN
+
+    @property
+    def native_current_temperature(self) -> float | None:
+        """Return the current temperature."""
+        entity = self.get_appliance.get_entity_or_none(Platform.SENSOR, "Temp")
+        return entity.state if entity is not None else None
+
+    @property
+    def native_target_temperature(self) -> float | None:
+        """Return the temperature we try to reach."""
+        entity = self.get_appliance.get_entity_or_none(
+            Platform.SENSOR, "TemperatureTarget"
+        )
+        return entity.state if entity is not None else None
+
+    if not hasattr(ClimateEntity, "native_temperature_unit"):
+        _attr_temperature_unit = _attr_native_temperature_unit
+        current_temperature = native_current_temperature
+        target_temperature = native_target_temperature
+
+    async def _ensure_powered_on(self) -> None:
+        if self._is_powered_off:
+            mode = self.get_appliance.work_mode_from_preset_mode(None)
+            await self.api.set_work_mode(self.pnc_id, mode)
+            self.get_appliance.set_mode(mode)
+
+    async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
+        """Set new target hvac mode."""
+        if hvac_mode == HVACMode.OFF:
+            await self.api.set_work_mode(self.pnc_id, WorkMode.OFF)
+            self.get_appliance.set_mode(WorkMode.OFF)
+            if self.hass is not None:
+                self.async_write_ha_state()
+        else:
+            await self._ensure_powered_on()
+            heating = hvac_mode == HVACMode.HEAT
+            await self.api.set_property(self.pnc_id, HEATER_ATTR, heating)
+            self.set_optimistic_state(Platform.BINARY_SENSOR, HEATER_ATTR, heating)
+        await self.async_refresh_later()
+
+    async def async_set_temperature(self, **kwargs: Any) -> None:
+        """Set new target temperature."""
+        temp = kwargs.get(ATTR_TEMPERATURE)
+        if temp is not None:
+            # The appliance rejects TemperatureTarget while heating is off.
+            await self._ensure_powered_on()
+            if not self._is_heating:
+                await self.api.set_property(self.pnc_id, HEATER_ATTR, True)
+                self.set_optimistic_state(Platform.BINARY_SENSOR, HEATER_ATTR, True)
+            value = int(temp) if float(temp).is_integer() else float(temp)
+            try:
+                await self.api.set_property(self.pnc_id, "TemperatureTarget", value)
+            except ClientResponseError as error:
+                # The EP91-67UGA lists TemperatureTarget as writable but the
+                # cloud rejects every command for it ("Capability not found").
+                if error.status == 406:
+                    raise HomeAssistantError(
+                        "The appliance rejected the target temperature; this model "
+                        "only allows changing it on the appliance itself"
+                    ) from error
+                raise
+            self.set_optimistic_state(Platform.SENSOR, "TemperatureTarget", value)
+        await self.async_refresh_later()
+
+    async def async_turn_on(self) -> None:
+        """Turn the heater on."""
+        await self.async_set_hvac_mode(HVACMode.HEAT)
+
+    async def async_turn_off(self) -> None:
+        """Turn the appliance off."""
+        await self.async_set_hvac_mode(HVACMode.OFF)
