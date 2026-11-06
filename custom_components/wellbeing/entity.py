@@ -74,7 +74,7 @@ class WellbeingEntity(CoordinatorEntity):
 
     # The cloud takes a few seconds to report a command back; keep the local
     # state in sync meanwhile and fetch the real state afterwards.
-    REFRESH_DELAY = 10
+    REFRESH_DELAY = 15
 
     def set_optimistic_state(self, entity_type, entity_attr, value) -> None:
         """Update a sibling entity's state locally until the next refresh."""

@@ -5,6 +5,7 @@ import logging
 from enum import StrEnum
 
 import voluptuous as vol
+from aiohttp import ClientResponseError
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.components.vacuum import Segment
@@ -1582,11 +1583,21 @@ class WellbeingApiClient:
             _LOGGER.debug(f"Set quiet fan on: {result}")
             return
 
-        # Leaving a virtual preset: clear the feature it stands for first.
-        if quiet_writable and str(reported.get("QuietFan", "")).casefold() == "on":
-            result = await appliance.send_command({"QuietFan": "off"})
-            _LOGGER.debug(f"Set quiet fan off: {result}")
-        if heating_writable and reported.get("Heating") is True:
+        # Leaving a virtual preset: clear the feature it stands for first. The
+        # cached state can lag the appliance by 15-20 s, so do not rely on it;
+        # the API answers 202 when the property already has that value.
+        if quiet_writable and (
+            str(reported.get("QuietFan", "")).casefold() == "on"
+            or str(reported.get("Workmode", "")).casefold() == "auto"
+        ):
+            try:
+                result = await appliance.send_command({"QuietFan": "off"})
+                _LOGGER.debug(f"Set quiet fan off: {result}")
+            except ClientResponseError as error:
+                # QuietFan is read-only outside Auto.
+                if error.status != 406:
+                    raise
+        if heating_writable:
             result = await appliance.send_command({"Heating": False})
             _LOGGER.debug(f"Set heating off: {result}")
 

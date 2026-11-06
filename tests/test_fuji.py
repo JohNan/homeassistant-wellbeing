@@ -417,7 +417,21 @@ async def test_fuji_platforms(hass):
         )
         assert [c.args[0] for c in mock_api.send_command.call_args_list] == [
             {"QuietFan": "off"},
+            {"Heating": False},
             {"Workmode": "auto"},
+        ]
+        # Leaving Heat clears heating even if the cached state is stale.
+        mock_api.state = {**FUJI_STATE, "Workmode": "Manual"}
+        mock_api.send_command.reset_mock()
+        await hass.services.async_call(
+            "fan",
+            "set_preset_mode",
+            {"entity_id": fan_id, "preset_mode": "Manual"},
+            blocking=True,
+        )
+        assert [c.args[0] for c in mock_api.send_command.call_args_list] == [
+            {"Heating": False},
+            {"Workmode": "manual"},
         ]
 
         # Humidifier (variant with the capability)
