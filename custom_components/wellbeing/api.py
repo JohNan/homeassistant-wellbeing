@@ -117,6 +117,8 @@ class WorkMode(StrEnum):
     SMART = "Smart"
     QUITE = "Quiet"
     AUTO = "Auto"
+    # Virtual preset for purifiers with a heater (Heating property, e.g. Fuji).
+    HEAT = "Heat"
 
 
 class LouverSwingMode(StrEnum):
@@ -304,6 +306,10 @@ class Appliance:
         self.pnc_id = pnc_id
         self.name = name
         self.model_name: str | None = None
+        # The appliance's own Workmode; `mode` may be a virtual preset
+        # (Heat / Quiet / PowerOff) derived from other properties.
+        self.work_mode_raw: WorkMode = WorkMode.UNDEFINED
+        self.capabilities = {}
 
     @property
     def display_name(self) -> str:
@@ -649,11 +655,13 @@ class Appliance:
                 attr="AQILevel",
                 device_class=SensorDeviceClass.ENUM,
             ),
+            # No temperature device class: HomeKit links the device's
+            # temperature-class sensor to the air purifier accessory and
+            # must pick the ambient "Temp" sensor, not the target.
             ApplianceSensor(
                 name="Target Temperature",
                 attr="TemperatureTarget",
                 unit=UnitOfTemperature.CELSIUS,
-                device_class=SensorDeviceClass.TEMPERATURE,
             ),
             ApplianceSensor(
                 name="PM Leading Mode",
@@ -800,6 +808,7 @@ class Appliance:
 
     def setup(self, data, capabilities):
         self.reported_state = data
+        self.capabilities = capabilities
         self.firmware = ""
         if "FrmVer_NIU" in data:
             self.firmware = data.get("FrmVer_NIU")
@@ -811,20 +820,24 @@ class Appliance:
             self.firmware = data.get("firmwareVersion")
         if "Workmode" in data:
             try:
-                self.mode = WorkMode(data.get("Workmode"))
+                self.work_mode_raw = WorkMode(data.get("Workmode"))
             except ValueError:
                 _LOGGER.debug("Unknown Workmode %s", data.get("Workmode"))
-                self.mode = WorkMode.UNDEFINED
+                self.work_mode_raw = WorkMode.UNDEFINED
+            self.mode = self.work_mode_raw
         elif "mode" in data:
             self.mode = data.get("mode")
         appliance_state = data.get("applianceState")
-        if (
-            "Workmode" in data
-            and isinstance(appliance_state, str)
-            and appliance_state.casefold() == "off"
-        ):
-            # Models powered via executeCommand keep their last Workmode while off.
-            self.mode = WorkMode.OFF
+        if "Workmode" in data:
+            if isinstance(appliance_state, str) and appliance_state.casefold() == "off":
+                # Models powered via executeCommand keep their last Workmode while off.
+                self.mode = WorkMode.OFF
+            elif data.get("Heating") is True and self.has_capability("Heating"):
+                self.mode = WorkMode.HEAT
+            elif str(
+                data.get("QuietFan", "")
+            ).casefold() == "on" and self.has_capability("QuietFan"):
+                self.mode = WorkMode.QUITE
         if "LouverSwingWorkmode" in data:
             self.louver_swing_mode = LouverSwingMode(data.get("LouverSwing"))
         if "powerMode" in data:
@@ -834,12 +847,16 @@ class Appliance:
         if "vacuumMode" in data:
             self.vacuum_mode = data.get("vacuumMode")
 
-        self.capabilities = capabilities
         self.entities = [
             entity.setup(data)
             for entity in Appliance._create_entities(data)
             if entity.source_attr in data
         ]
+
+    @property
+    def is_manual_fan_control(self) -> bool:
+        """Whether the fan speed can be set without changing the work mode."""
+        return self.work_mode_raw == WorkMode.MANUAL
 
     @property
     def preset_modes(self) -> list[WorkMode]:
@@ -853,7 +870,13 @@ class Appliance:
             if str(value).casefold() in valid_modes
         ]
         if modes:
-            if WorkMode.OFF not in modes and self.supports_execute_command:
+            # Virtual presets for feature toggles; HomeKit shows them as
+            # switches inside the air purifier accessory.
+            if self.has_capability("Heating") and WorkMode.HEAT not in modes:
+                modes.append(WorkMode.HEAT)
+            if self.has_capability("QuietFan") and WorkMode.QUITE not in modes:
+                modes.append(WorkMode.QUITE)
+            if WorkMode.OFF not in modes and not self.supports_execute_command:
                 modes.append(WorkMode.OFF)
             return modes
         if self.model == Model.Muju:
@@ -1004,6 +1027,11 @@ class Appliance:
                     self.power_mode = FAN_SPEEDS_PUREI92.get(speed, self.power_mode)
                 if hasattr(self, "eco_mode"):
                     self.eco_mode = FAN_SPEEDS_PUREI9.get(speed, self.eco_mode)
+
+
+def _is_writable(capabilities: dict, name: str) -> bool:
+    capability = capabilities.get(name)
+    return isinstance(capability, dict) and capability.get("access") == "readwrite"
 
 
 def _api_capabilities(appliance: ApiAppliance) -> dict:
@@ -1531,11 +1559,36 @@ class WellbeingApiClient:
             _LOGGER.debug(f"Power off: {result}")
             return
 
+        reported = _api_reported(appliance)
         if uses_execute_command and mode != WorkMode.OFF:
-            appliance_state = _api_reported(appliance).get("applianceState")
+            appliance_state = reported.get("applianceState")
             if isinstance(appliance_state, str) and appliance_state.casefold() == "off":
                 result = await appliance.send_command({"executeCommand": "on"})
                 _LOGGER.debug(f"Power on: {result}")
+
+        heating_writable = _is_writable(capabilities, "Heating")
+        quiet_writable = _is_writable(capabilities, "QuietFan")
+        if mode == WorkMode.HEAT and heating_writable:
+            result = await appliance.send_command({"Heating": True})
+            _LOGGER.debug(f"Set heating on: {result}")
+            return
+        if mode == WorkMode.QUITE and quiet_writable:
+            # QuietFan is only accepted while the appliance is in Auto.
+            if str(reported.get("Workmode", "")).casefold() != "auto":
+                value = accepted.get("auto", WorkMode.AUTO.value)
+                result = await appliance.send_command({"Workmode": value})
+                _LOGGER.debug(f"Set work mode: {result}")
+            result = await appliance.send_command({"QuietFan": "on"})
+            _LOGGER.debug(f"Set quiet fan on: {result}")
+            return
+
+        # Leaving a virtual preset: clear the feature it stands for first.
+        if quiet_writable and str(reported.get("QuietFan", "")).casefold() == "on":
+            result = await appliance.send_command({"QuietFan": "off"})
+            _LOGGER.debug(f"Set quiet fan off: {result}")
+        if heating_writable and reported.get("Heating") is True:
+            result = await appliance.send_command({"Heating": False})
+            _LOGGER.debug(f"Set heating off: {result}")
 
         value = accepted.get(mode.value.casefold(), mode.value)
         result = await appliance.send_command({"Workmode": value})

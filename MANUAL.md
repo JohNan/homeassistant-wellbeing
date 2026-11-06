@@ -83,6 +83,15 @@ filter life, ionizer and safety lock switches) it exposes:
   every `TemperatureTarget` command with "Capability not found" even though
   the capability is listed as writable, so on that model the target can only
   be changed on the appliance itself and Home Assistant reports an error.
+- `fan` presets `Auto`, `Manual`, **`Heat`** and **`Quiet`**: `Heat` and
+  `Quiet` are virtual presets for the `Heating` and `QuietFan` properties
+  (the appliance itself only has `auto`/`manual` work modes). Selecting
+  `Auto`/`Manual` clears them again; changing the speed while heating keeps
+  the heater on. With the HomeKit bridge the fan becomes one *Air Purifier*
+  accessory with the PM2.5, humidity and temperature sensors linked and the
+  presets shown as switches inside it, so the appliance appears as a single
+  device in the Home app (exclude the climate and switch entities from the
+  bridge to avoid duplicates).
 - `switch` **UV Water Sterilisation** and **Quiet Fan**: these properties use
   `"on"`/`"off"` strings; the integration converts them. Quiet fan can only be
   changed while the work mode is `Auto`, and it is mutually exclusive with

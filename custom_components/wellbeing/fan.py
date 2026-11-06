@@ -97,7 +97,10 @@ class WellbeingFan(WellbeingEntity, FanEntity):
             await self.async_turn_off()
             return
 
-        is_manual = self.preset_mode == WorkMode.MANUAL
+        is_manual = (
+            self.preset_mode == WorkMode.MANUAL
+            or self.get_appliance.is_manual_fan_control
+        )
         # make sure manual is set before setting speed
         if not is_manual:
             await self.async_set_preset_mode(WorkMode.MANUAL)

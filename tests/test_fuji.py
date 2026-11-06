@@ -158,8 +158,16 @@ def test_fuji_appliance_setup():
     assert appliance.firmware == "VM222_A_04.43.06_FUJI"
     # min 0 means "stopped"; Home Assistant models that as off.
     assert appliance.speed_range == (1, 9)
-    # Capability values are lower case; OFF is added because of executeCommand.
-    assert appliance.preset_modes == [WorkMode.MANUAL, WorkMode.AUTO, WorkMode.OFF]
+    # Capability values are lower case; Heat and Quiet are virtual presets for
+    # the Heating / QuietFan properties; power is executeCommand, not a preset.
+    assert appliance.preset_modes == [
+        WorkMode.MANUAL,
+        WorkMode.AUTO,
+        WorkMode.HEAT,
+        WorkMode.QUITE,
+    ]
+    assert appliance.work_mode_raw == WorkMode.AUTO
+    assert not appliance.is_manual_fan_control
     assert appliance.supports_execute_command
     assert appliance.work_mode_command_value(WorkMode.AUTO) == "auto"
     assert appliance.work_mode_command_value(WorkMode.OFF) == "PowerOff"
@@ -206,6 +214,18 @@ def test_capability_helpers():
     assert appliance.has_capability("UVWaterState")
     assert not appliance.has_capability("Humidification")
     assert not appliance.has_capability("executeCommand")
+
+
+def test_virtual_presets_from_feature_properties():
+    """Heating / QuietFan map to the Heat / Quiet presets."""
+    heating = _fuji_appliance(
+        state={**FUJI_STATE, "Heating": True, "Workmode": "Manual"}
+    )
+    assert heating.mode == WorkMode.HEAT
+    assert heating.work_mode_raw == WorkMode.MANUAL
+    assert heating.is_manual_fan_control
+    quiet = _fuji_appliance(state={**FUJI_STATE, "QuietFan": "on"})
+    assert quiet.mode == WorkMode.QUITE
 
 
 def test_powered_off_appliance_reports_off_mode():
@@ -332,7 +352,7 @@ async def test_fuji_platforms(hass):
         assert hass.states.get(error_id).state == "off"
         fan = hass.states.get(fan_id)
         assert fan is not None
-        assert fan.attributes["preset_modes"] == ["Manual", "Auto", "PowerOff"]
+        assert fan.attributes["preset_modes"] == ["Manual", "Auto", "Heat", "Quiet"]
 
         # Heater
         await hass.services.async_call(
@@ -368,6 +388,37 @@ async def test_fuji_platforms(hass):
             blocking=True,
         )
         mock_api.send_command.assert_any_call({"Workmode": "manual"})
+
+        # Virtual presets: Heat turns the heater on, Quiet needs Auto first.
+        await hass.services.async_call(
+            "fan",
+            "set_preset_mode",
+            {"entity_id": fan_id, "preset_mode": "Heat"},
+            blocking=True,
+        )
+        mock_api.send_command.assert_any_call({"Heating": True})
+        mock_api.state = {**FUJI_STATE, "Heating": True, "Workmode": "Manual"}
+        mock_api.send_command.reset_mock()
+        await hass.services.async_call(
+            "fan",
+            "set_preset_mode",
+            {"entity_id": fan_id, "preset_mode": "Quiet"},
+            blocking=True,
+        )
+        assert mock_api.send_command.call_args_list[0].args[0] == {"Workmode": "auto"}
+        mock_api.send_command.assert_any_call({"QuietFan": "on"})
+        mock_api.state = {**FUJI_STATE, "QuietFan": "on"}
+        mock_api.send_command.reset_mock()
+        await hass.services.async_call(
+            "fan",
+            "set_preset_mode",
+            {"entity_id": fan_id, "preset_mode": "Auto"},
+            blocking=True,
+        )
+        assert [c.args[0] for c in mock_api.send_command.call_args_list] == [
+            {"QuietFan": "off"},
+            {"Workmode": "auto"},
+        ]
 
         # Humidifier (variant with the capability)
         await hass.services.async_call(
