@@ -130,7 +130,10 @@ class WellbeingFan(WellbeingEntity, FanEntity):
 
         self.get_appliance.set_mode(self._preset_mode)
         self._set_optimistic_features(self._preset_mode)
-        self.async_write_ha_state()
+        if self.hass is not None:
+            self.coordinator.async_update_listeners()
+        else:
+            self.async_write_ha_state()
         await self.api.set_work_mode(self.pnc_id, self._preset_mode)
         await self.async_refresh_later()
 

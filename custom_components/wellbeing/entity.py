@@ -80,7 +80,8 @@ class WellbeingEntity(CoordinatorEntity):
         """Update the entities of a property locally until the cloud confirms."""
         self.get_appliance.set_optimistic(entity_attr, value)
         if self.hass is not None:
-            self.async_write_ha_state()
+            # Every entity of the appliance may show this property.
+            self.coordinator.async_update_listeners()
 
     async def async_refresh_later(self, delay: float | None = None) -> None:
         """Schedule a coordinator refresh once the appliance has caught up.
