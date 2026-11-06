@@ -3,6 +3,7 @@
 import asyncio
 import logging
 from enum import StrEnum
+from time import monotonic
 
 import voluptuous as vol
 from aiohttp import ClientResponseError
@@ -21,6 +22,25 @@ from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.typing import UNDEFINED
 from pyelectroluxgroup.api import ElectroluxHubAPI
 from pyelectroluxgroup.appliance import Appliance as ApiAppliance
+
+# How long a value set from Home Assistant is kept over what the cloud
+# reports, until the cloud confirms it. The Electrolux cloud lags the
+# appliance by 15-20 s and live stream events for other properties would
+# otherwise overwrite the optimistic value in the meantime.
+OPTIMISTIC_TTL = 25
+
+
+def _normalize(value):
+    """Normalize reported values so optimistic and cloud values compare."""
+    if isinstance(value, str):
+        lowered = value.casefold()
+        if lowered in ("on", "true"):
+            return True
+        if lowered in ("off", "false"):
+            return False
+        return lowered
+    return value
+
 
 FILTER_TYPE = {
     48: "BREEZE Complete air filter",
@@ -311,6 +331,8 @@ class Appliance:
         # (Heat / Quiet / PowerOff) derived from other properties.
         self.work_mode_raw: WorkMode = WorkMode.UNDEFINED
         self.capabilities = {}
+        self._optimistic: dict[str, tuple[object, float]] = {}
+        self._optimistic_mode: tuple[WorkMode, float] | None = None
 
     @property
     def display_name(self) -> str:
@@ -803,9 +825,37 @@ class Appliance:
 
     def clear_mode(self):
         self.mode = WorkMode.UNDEFINED
+        self._optimistic_mode = None
 
     def set_mode(self, mode: WorkMode):
+        """Set the mode optimistically until the cloud confirms it."""
         self.mode = mode
+        self._optimistic_mode = (mode, monotonic() + OPTIMISTIC_TTL)
+
+    def set_optimistic(self, attr: str, value) -> None:
+        """Keep a value sent to the appliance until the cloud confirms it."""
+        self._optimistic[attr] = (value, monotonic() + OPTIMISTIC_TTL)
+        for entity in self.entities:
+            if entity.attr == attr:
+                entity._state = value
+
+    def _apply_optimistic(self, data) -> None:
+        now = monotonic()
+        if self._optimistic_mode is not None:
+            mode, expires = self._optimistic_mode
+            if now > expires or self.mode == mode:
+                self._optimistic_mode = None
+            else:
+                self.mode = mode
+        for attr, (value, expires) in list(self._optimistic.items()):
+            if now > expires or (
+                attr in data and _normalize(data[attr]) == _normalize(value)
+            ):
+                del self._optimistic[attr]
+                continue
+            for entity in self.entities:
+                if entity.attr == attr:
+                    entity._state = value
 
     def setup(self, data, capabilities):
         self.reported_state = data
@@ -853,6 +903,7 @@ class Appliance:
             for entity in Appliance._create_entities(data)
             if entity.source_attr in data
         ]
+        self._apply_optimistic(data)
 
     @property
     def is_manual_fan_control(self) -> bool:

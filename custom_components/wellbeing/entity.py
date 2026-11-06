@@ -77,10 +77,8 @@ class WellbeingEntity(CoordinatorEntity):
     REFRESH_DELAY = 15
 
     def set_optimistic_state(self, entity_type, entity_attr, value) -> None:
-        """Update a sibling entity's state locally until the next refresh."""
-        entity = self.get_appliance.get_entity_or_none(entity_type, entity_attr)
-        if entity is not None:
-            entity._state = value
+        """Update the entities of a property locally until the cloud confirms."""
+        self.get_appliance.set_optimistic(entity_attr, value)
         if self.hass is not None:
             self.async_write_ha_state()
 

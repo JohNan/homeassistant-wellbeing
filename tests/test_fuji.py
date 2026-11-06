@@ -228,6 +228,35 @@ def test_virtual_presets_from_feature_properties():
     assert quiet.mode == WorkMode.QUITE
 
 
+def test_optimistic_values_survive_stale_cloud_state():
+    """Values set from HA are kept until the cloud confirms them or they expire."""
+    appliance = _fuji_appliance()
+    appliance.set_mode(WorkMode.HEAT)
+    appliance.set_optimistic("LouverSwing", "swing")
+    assert appliance.get_entity(Platform.SELECT, "LouverSwing").state == "swing"
+
+    # A stale cloud update (e.g. a live stream event for another property)
+    # must not revert them.
+    appliance.setup(dict(FUJI_STATE), FUJI_CAPABILITIES)
+    assert appliance.mode == WorkMode.HEAT
+    assert appliance.get_entity(Platform.SELECT, "LouverSwing").state == "swing"
+    assert appliance.get_entity(Platform.SENSOR, "LouverSwing").state == "swing"
+
+    # Once the cloud confirms, the optimistic entries are dropped.
+    appliance.setup(
+        {**FUJI_STATE, "Heating": True, "LouverSwing": "swing"}, FUJI_CAPABILITIES
+    )
+    assert appliance.mode == WorkMode.HEAT
+    assert appliance._optimistic == {}
+    assert appliance._optimistic_mode is None
+
+    # Expired entries give way to whatever the cloud reports.
+    appliance.set_mode(WorkMode.QUITE)
+    appliance._optimistic_mode = (WorkMode.QUITE, 0)
+    appliance.setup(dict(FUJI_STATE), FUJI_CAPABILITIES)
+    assert appliance.mode == WorkMode.AUTO
+
+
 def test_powered_off_appliance_reports_off_mode():
     """applianceState off maps to the OFF work mode (Workmode keeps its value)."""
     appliance = _fuji_appliance(
