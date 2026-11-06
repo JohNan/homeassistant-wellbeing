@@ -30,6 +30,9 @@ A custom component designed for [Home Assistant](https://www.home-assistant.io) 
 - Electrolux Pure Multi 700 Humidifier-Purifier
     - EPU73771DG (all data is readable, but only fan can be controlled)
 
+- Electrolux UltimateHome 900 Air Purifier with heater ("Fuji")
+    - EP91-67UGA (sold in Taiwan as 冷暖空氣清淨機; see [MANUAL.md](MANUAL.md#fuji-air-purifier-with-heater))
+
 - Electrolux PUREi9 Vacuum Robot
     - PUREi9
     - PUREi9.2

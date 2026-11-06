@@ -10,7 +10,7 @@ async def async_setup_entry(hass, entry, async_add_devices):
     """Setup switch platform."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
     appliances = coordinator.data.get("appliances", None)
-    capabilities = ["Ionizer", "UILight", "SafetyLock"]
+    capabilities = ["Ionizer", "UILight", "SafetyLock", "UVWaterState", "QuietFan"]
 
     if appliances is not None:
         for pnc_id, appliance in appliances.appliances.items():
