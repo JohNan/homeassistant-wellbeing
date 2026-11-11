@@ -41,6 +41,11 @@
     }
   },
   "entity": {
+    "select": {
+      "active_map": {
+        "name": "Actieve kaart"
+      }
+    },
     "vacuum": {
       "vacuum": {
         "state_attributes": {

@@ -33,6 +33,11 @@
     }
   },
   "entity": {
+    "select": {
+      "active_map": {
+        "name": "Aktive Karte"
+      }
+    },
     "vacuum": {
       "vacuum": {
         "state_attributes": {
