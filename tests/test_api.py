@@ -102,6 +102,19 @@ def test_appliance_setup_purei9():
     assert appliance.preset_modes == [WorkMode.AUTO, WorkMode.MANUAL, WorkMode.OFF]
     assert appliance.work_mode_from_preset_mode("Manual") == WorkMode.MANUAL
 
+    # Test dustbin status normalization for PUREi9.2
+    appliance_dustbin = Appliance("Vacuum", "pnc_1", "PUREi9")
+    appliance_dustbin.setup({"dustbinStatus": "notConnected"}, {})
+    assert (
+        appliance_dustbin.get_entity(Platform.SENSOR, "dustbinStatus").state == "empty"
+    )
+
+    appliance_dustbin.setup({"dustbinStatus": "connected"}, {})
+    assert (
+        appliance_dustbin.get_entity(Platform.SENSOR, "dustbinStatus").state
+        == "connected"
+    )
+
     # Test battery range
     assert appliance.battery_range == (2, 6)
 
