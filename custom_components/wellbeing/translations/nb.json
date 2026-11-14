@@ -35,6 +35,11 @@
     }
   },
   "entity": {
+    "select": {
+      "active_map": {
+        "name": "Aktivt kart"
+      }
+    },
     "vacuum": {
       "vacuum": {
         "state_attributes": {
