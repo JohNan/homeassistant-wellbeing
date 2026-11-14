@@ -22,10 +22,11 @@ class DummyMap:
 class DummyZone:
     """Dummy zone object for dummy map."""
 
-    def __init__(self, name, zone_id, power_mode=2):
+    def __init__(self, name, zone_id, power_mode=2, zone_type="clean"):
         self.name = name
         self.id = zone_id
         self.power_mode = power_mode
+        self.type = zone_type
 
 
 class DummyMemoryMap:
@@ -163,11 +164,18 @@ async def test_platforms(hass):
         # Setup dummy interactive map for PUREi9 clean_zones
         dummy_zone = DummyZone("Kitchen", "zone_123", 2)
         dummy_map = DummyMap("Downstairs", "map_123", [dummy_zone])
-        mock_api_vac.async_get_interactive_maps = AsyncMock(return_value=[dummy_map])
+        dummy_zone2 = DummyZone("Bedroom", "zone_456", 2)
+        dummy_map2 = DummyMap("Upstairs", "map_456", [dummy_zone2])
+        mock_api_vac.async_get_interactive_maps = AsyncMock(
+            return_value=[dummy_map, dummy_map2]
+        )
 
         # Setup dummy memory map for Gordias clean_room
         dummy_mem_map = DummyMemoryMap(
             "mem_map_123", "Downstairs", [{"id": 1, "name": "Kitchen"}]
+        )
+        dummy_mem_map2 = DummyMemoryMap(
+            "mem_map_456", "Upstairs", [{"id": 2, "name": "Bedroom"}]
         )
 
         mock_api_gordias = AsyncMock()
@@ -175,7 +183,9 @@ async def test_platforms(hass):
         mock_api_gordias.brand = "Electrolux"
         mock_api_gordias.serial_number = "sn_vac2"
         mock_api_gordias.device_type = "ROBOTIC_VACUUM_CLEANER"
-        mock_api_gordias.async_get_memory_maps = AsyncMock(return_value=[dummy_mem_map])
+        mock_api_gordias.async_get_memory_maps = AsyncMock(
+            return_value=[dummy_mem_map, dummy_mem_map2]
+        )
 
         mock_api_pur = AsyncMock()
         mock_api_pur.type = "Muju"
@@ -196,9 +206,15 @@ async def test_platforms(hass):
             "pnc_ac1": mock_api_ac,
         }
 
+        # Update coordinator so map select entities discover available maps
+        await coordinator.async_refresh()
+        await hass.async_block_till_done()
+
         # Verify entity setups in HASS state
         vacuum_entity_id = "vacuum.wellbeing_vacuum_cleaner_robotstatus"
         gordias_entity_id = "vacuum.wellbeing_robot_gordias_robotstatus"
+        vacuum_map_select_id = "select.wellbeing_vacuum_cleaner_active_map"
+        gordias_map_select_id = "select.wellbeing_robot_gordias_active_map"
         purifier_fan_entity_id = "fan.wellbeing_air_purifier_fanspeed"
         climate_entity_id = "climate.wellbeing_climate_ac_mode"
         sensor_entity_id = "sensor.wellbeing_air_purifier_filterlife"
@@ -206,6 +222,8 @@ async def test_platforms(hass):
 
         assert hass.states.get(vacuum_entity_id) is not None
         assert hass.states.get(gordias_entity_id) is not None
+        assert hass.states.get(vacuum_map_select_id) is not None
+        assert hass.states.get(gordias_map_select_id) is not None
         assert hass.states.get(purifier_fan_entity_id) is not None
         assert hass.states.get(climate_entity_id) is not None
         assert hass.states.get(sensor_entity_id) is not None
@@ -301,6 +319,41 @@ async def test_platforms(hass):
                         "numberOfCleaningRepetitions": 1,
                     }
                 ],
+            }
+        )
+
+        # Test vacuum map selection and segment resolution across maps
+        map_select_state = hass.states.get(vacuum_map_select_id)
+        assert map_select_state.state == "Downstairs"
+        assert map_select_state.attributes["options"] == ["Downstairs", "Upstairs"]
+
+        # Segments initially reflect the first/default map
+        segments = await client.vacuum_get_segments("pnc_vac1")
+        assert len(segments) == 1
+        assert segments[0].name == "Kitchen"
+
+        # Change active map to Upstairs
+        await hass.services.async_call(
+            "select",
+            "select_option",
+            {"entity_id": vacuum_map_select_id, "option": "Upstairs"},
+            blocking=True,
+        )
+        assert hass.states.get(vacuum_map_select_id).state == "Upstairs"
+
+        # Segments now reflect Upstairs
+        segments = await client.vacuum_get_segments("pnc_vac1")
+        assert len(segments) == 1
+        assert segments[0].name == "Bedroom"
+
+        # Clean segment on Upstairs map uses persistentMapId map_456
+        await client.vacuum_clean_segments("pnc_vac1", ["zone_456"])
+        mock_api_vac.send_command.assert_any_call(
+            {
+                "CustomPlay": {
+                    "persistentMapId": "map_456",
+                    "zones": [{"zoneId": "zone_456", "powerMode": 2}],
+                }
             }
         )
 

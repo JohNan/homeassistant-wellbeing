@@ -1117,6 +1117,7 @@ class WellbeingApiClient:
         self._load_lock = asyncio.Lock()
         self._livestream_revision = 0
         self._livestream_updates: dict[str, dict[str, tuple[int, object]]] = {}
+        self._selected_maps: dict[str, str] = {}
 
     async def _ensure_loaded(self) -> None:
         if self._api_appliances:
@@ -1342,6 +1343,38 @@ class WellbeingApiClient:
         _LOGGER.debug(f"Set Fan Speed command: {result}")
         appliance.vacuum_set_fan_speed(speed)
 
+    def vacuum_get_selected_map(self, pnc_id: str) -> str | None:
+        """Get the currently selected map name for a vacuum cleaner."""
+        return self._selected_maps.get(pnc_id)
+
+    def vacuum_set_selected_map(self, pnc_id: str, map_name: str) -> None:
+        """Set the currently selected map name for a vacuum cleaner."""
+        self._selected_maps[pnc_id] = map_name
+
+    async def vacuum_get_maps(self, pnc_id: str) -> list[str]:
+        """Get the available maps for a vacuum cleaner."""
+        appliance = self._api_appliances.get(pnc_id, None)
+        if appliance is None:
+            return []
+
+        if appliance.type == Model.PUREi9.value:
+            api_maps = await appliance.async_get_interactive_maps()
+            return list(
+                dict.fromkeys(m.name for m in api_maps if getattr(m, "name", None))
+            )
+
+        if (
+            appliance.type == Model.Robot700series.value
+            or appliance.type == Model.VacuumHygienic700.value
+            or appliance.type == Model.Cybele.value
+        ):
+            api_maps = await appliance.async_get_memory_maps()
+            return list(
+                dict.fromkeys(m.name for m in api_maps if getattr(m, "name", None))
+            )
+
+        return []
+
     async def vacuum_get_segments(self, pnc_id: str) -> list[Segment]:
         """Get the segments (zones or rooms) of a vacuum cleaner."""
         appliance = self._api_appliances.get(pnc_id, None)
@@ -1355,7 +1388,12 @@ class WellbeingApiClient:
             or appliance.type == Model.Cybele.value
         ):
             api_maps = await appliance.async_get_memory_maps()
-            api_map = api_maps[0] if api_maps else None  # Default to the first map
+            selected_name = self._selected_maps.get(pnc_id)
+            api_map = (
+                next((m for m in api_maps if m.name == selected_name), None)
+                if selected_name
+                else (api_maps[0] if api_maps else None)
+            )
             if not api_map:
                 _LOGGER.error(f"No memory maps found for appliance with id {pnc_id}")
                 return []
@@ -1363,7 +1401,12 @@ class WellbeingApiClient:
 
         if appliance.type == Model.PUREi9.value:
             api_maps = await appliance.async_get_interactive_maps()
-            api_map = api_maps[0] if api_maps else None  # Default to the first map
+            selected_name = self._selected_maps.get(pnc_id)
+            api_map = (
+                next((m for m in api_maps if m.name == selected_name), None)
+                if selected_name
+                else (api_maps[0] if api_maps else None)
+            )
             if not api_map:
                 _LOGGER.error(
                     f"No interactive maps found for appliance with id {pnc_id}"
@@ -1390,7 +1433,12 @@ class WellbeingApiClient:
             or appliance.type == Model.Cybele.value
         ):
             api_maps = await appliance.async_get_memory_maps()
-            api_map = api_maps[0] if api_maps else None
+            selected_name = self._selected_maps.get(pnc_id)
+            api_map = (
+                next((m for m in api_maps if m.name == selected_name), None)
+                if selected_name
+                else (api_maps[0] if api_maps else None)
+            )
             if not api_map:
                 _LOGGER.error(f"No memory maps found for appliance with id {pnc_id}")
                 return
@@ -1425,7 +1473,12 @@ class WellbeingApiClient:
 
         if appliance.type == Model.PUREi9.value:
             api_maps = await appliance.async_get_interactive_maps()
-            api_map = api_maps[0] if api_maps else None  # Default to the first map
+            selected_name = self._selected_maps.get(pnc_id)
+            api_map = (
+                next((m for m in api_maps if m.name == selected_name), None)
+                if selected_name
+                else (api_maps[0] if api_maps else None)
+            )
             if not api_map:
                 _LOGGER.error(
                     f"No interactive maps found for appliance with id {pnc_id}"
