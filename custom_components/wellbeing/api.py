@@ -193,9 +193,18 @@ class ApplianceSensor(ApplianceEntity):
         device_class=None,
         entity_category: EntityCategory = UNDEFINED,
         state_class: SensorStateClass | str | None = None,
+        transform=None,
     ) -> None:
         super().__init__(name, attr, device_class, entity_category, state_class)
         self.unit = unit
+        self.transform = transform
+
+    def setup(self, data):
+        value = data[self.source_attr]
+        if self.transform is not None and value is not None:
+            value = self.transform(value)
+        self._state = value
+        return self
 
 
 class ApplianceFan(ApplianceEntity):
@@ -513,6 +522,10 @@ class Appliance:
                 name="Dustbin Status",
                 attr="dustbinStatus",
                 device_class=SensorDeviceClass.ENUM,
+                # PUREi9.2 firmware bug: returns "notConnected" when the dustbin is present and empty
+                transform=lambda val: (
+                    "empty" if str(val).lower() == "notconnected" else val
+                ),
             ),
             ApplianceSensor(
                 name="Robot Status",
