@@ -1,5 +1,6 @@
 """Tests for api.py."""
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -279,3 +280,52 @@ async def test_api_client_update_error():
     client = WellbeingApiClient(mock_hub)
     with pytest.raises(ClientResponseError):
         await client._ensure_loaded()
+
+
+def _purei9_client(reported: dict) -> tuple[WellbeingApiClient, MagicMock]:
+    """WellbeingApiClient with one PUREi9 that has a single interactive map."""
+    api_map = SimpleNamespace(
+        id="map_1",
+        name="Ground floor",
+        zones=[
+            SimpleNamespace(id="kitchen", name="Kitchen", type="clean", power_mode=3),
+            SimpleNamespace(id="hall", name="Hall", type="clean", power_mode=None),
+        ],
+    )
+    api_appliance = MagicMock()
+    api_appliance.type = "PUREi9"
+    api_appliance.state = reported
+    api_appliance.async_get_interactive_maps = AsyncMock(return_value=[api_map])
+    api_appliance.send_command = AsyncMock()
+    client = WellbeingApiClient(AsyncMock())
+    client._api_appliances = {"pnc_vac": api_appliance}
+    return client, api_appliance
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("reported", "expected"),
+    [
+        ({"ecoMode": True}, 1),  # gen 1 PUREi9: Eco
+        ({"ecoMode": False}, 3),  # gen 1 PUREi9: Power
+        ({"powerMode": 1}, 2),  # PUREi9.2: smart, as before
+        ({}, 2),
+    ],
+)
+async def test_vacuum_clean_segments_default_power_mode(reported, expected):
+    """A zone without a power mode gets a mode the robot supports."""
+    client, api_appliance = _purei9_client(reported)
+
+    await client.vacuum_clean_segments("pnc_vac", ["kitchen", "hall"])
+
+    api_appliance.send_command.assert_awaited_once_with(
+        {
+            "CustomPlay": {
+                "persistentMapId": "map_1",
+                "zones": [
+                    {"zoneId": "kitchen", "powerMode": 3},
+                    {"zoneId": "hall", "powerMode": expected},
+                ],
+            }
+        }
+    )
