@@ -94,6 +94,7 @@ INTERACTIVE_MAP_SCHEMA = vol.Schema(
     {
         vol.Required("map"): str,
         vol.Required("zones"): [validate_vacuum_zone_entry],
+        vol.Optional("fan_speed"): vol.In(list(FAN_SPEEDS_PUREI92.keys())),
     }
 )
 
@@ -1131,6 +1132,7 @@ class WellbeingApiClient:
         self._livestream_revision = 0
         self._livestream_updates: dict[str, dict[str, tuple[int, object]]] = {}
         self._selected_maps: dict[str, str] = {}
+        self._interactive_maps: dict[str, list] = {}
 
     async def _ensure_loaded(self) -> None:
         if self._api_appliances:
@@ -1372,6 +1374,7 @@ class WellbeingApiClient:
 
         if appliance.type == Model.PUREi9.value:
             api_maps = await appliance.async_get_interactive_maps()
+            self._interactive_maps[pnc_id] = list(api_maps or [])
             return list(
                 dict.fromkeys(m.name for m in api_maps if getattr(m, "name", None))
             )
@@ -1382,6 +1385,7 @@ class WellbeingApiClient:
             or appliance.type == Model.Cybele.value
         ):
             api_maps = await appliance.async_get_memory_maps()
+            self._interactive_maps[pnc_id] = list(api_maps or [])
             return list(
                 dict.fromkeys(m.name for m in api_maps if getattr(m, "name", None))
             )
@@ -1636,7 +1640,8 @@ class WellbeingApiClient:
                     {
                         "zoneId": api_zone.id,
                         "powerMode": FAN_SPEEDS_PUREI92.get(
-                            zone.get("fan_speed"), api_zone.power_mode
+                            zone.get("fan_speed") or params.get("fan_speed"),
+                            api_zone.power_mode,
                         ),
                     }
                 )

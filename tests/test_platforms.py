@@ -340,6 +340,13 @@ async def test_platforms(hass):
             blocking=True,
         )
         assert hass.states.get(vacuum_map_select_id).state == "Upstairs"
+        await coordinator.async_refresh()
+        await hass.async_block_till_done()
+        vac_state = hass.states.get(vacuum_entity_id)
+        assert vac_state.attributes["active_map"] == "Upstairs"
+        assert vac_state.attributes["available_maps"] == ["Downstairs", "Upstairs"]
+        assert vac_state.attributes["available_zones"] == ["Bedroom"]
+        assert vac_state.attributes["avoid_zones"] == []
 
         # Segments now reflect Upstairs
         segments = await client.vacuum_get_segments("pnc_vac1")
