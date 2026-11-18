@@ -1131,6 +1131,7 @@ class WellbeingApiClient:
         self._livestream_revision = 0
         self._livestream_updates: dict[str, dict[str, tuple[int, object]]] = {}
         self._selected_maps: dict[str, str] = {}
+        self._interactive_maps: dict[str, list] = {}
 
     async def _ensure_loaded(self) -> None:
         if self._api_appliances:
@@ -1372,6 +1373,7 @@ class WellbeingApiClient:
 
         if appliance.type == Model.PUREi9.value:
             api_maps = await appliance.async_get_interactive_maps()
+            self._interactive_maps[pnc_id] = list(api_maps or [])
             return list(
                 dict.fromkeys(m.name for m in api_maps if getattr(m, "name", None))
             )
@@ -1382,6 +1384,7 @@ class WellbeingApiClient:
             or appliance.type == Model.Cybele.value
         ):
             api_maps = await appliance.async_get_memory_maps()
+            self._interactive_maps[pnc_id] = list(api_maps or [])
             return list(
                 dict.fromkeys(m.name for m in api_maps if getattr(m, "name", None))
             )
