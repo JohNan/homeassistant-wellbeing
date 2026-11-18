@@ -94,6 +94,7 @@ INTERACTIVE_MAP_SCHEMA = vol.Schema(
     {
         vol.Required("map"): str,
         vol.Required("zones"): [validate_vacuum_zone_entry],
+        vol.Optional("fan_speed"): vol.In(list(FAN_SPEEDS_PUREI92.keys())),
     }
 )
 
@@ -1636,7 +1637,8 @@ class WellbeingApiClient:
                     {
                         "zoneId": api_zone.id,
                         "powerMode": FAN_SPEEDS_PUREI92.get(
-                            zone.get("fan_speed"), api_zone.power_mode
+                            zone.get("fan_speed") or params.get("fan_speed"),
+                            api_zone.power_mode,
                         ),
                     }
                 )
