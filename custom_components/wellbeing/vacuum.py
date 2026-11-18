@@ -106,6 +106,55 @@ class WellbeingVacuum(WellbeingEntity, StateVacuumEntity):
         """Return the list of available fan speeds."""
         return self.get_appliance.vacuum_fan_speed_list
 
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return map and zone attributes for automations and dashboards."""
+        base = super().extra_state_attributes or {}
+        maps = (
+            self.api._interactive_maps.get(self.pnc_id, [])
+            if hasattr(self.api, "_interactive_maps")
+            else []
+        )
+        selected_name = (
+            self.api.vacuum_get_selected_map(self.pnc_id)
+            if hasattr(self.api, "vacuum_get_selected_map")
+            else None
+        )
+        selected_map = (
+            next(
+                (m for m in maps if getattr(m, "name", None) == selected_name),
+                None,
+            )
+            if selected_name
+            else None
+        )
+        if selected_map is None and maps:
+            selected_map = maps[0]
+
+        zones = getattr(selected_map, "zones", []) if selected_map else []
+        available_zones = [
+            getattr(z, "name", None)
+            for z in (zones or [])
+            if getattr(z, "type", "clean") == "clean" and getattr(z, "name", None)
+        ]
+        avoid_zones = [
+            getattr(z, "name", None)
+            for z in (zones or [])
+            if getattr(z, "type", "") == "avoid" and getattr(z, "name", None)
+        ]
+        return {
+            **base,
+            "active_map": getattr(selected_map, "name", None) if selected_map else None,
+            "active_map_id": getattr(selected_map, "id", None)
+            if selected_map
+            else None,
+            "available_maps": [
+                getattr(m, "name", None) for m in maps if getattr(m, "name", None)
+            ],
+            "available_zones": available_zones,
+            "avoid_zones": avoid_zones,
+        }
+
     async def async_start(self):
         """Start the vacuum cleaner."""
         await self.api.vacuum_start(self.pnc_id)
