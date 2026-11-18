@@ -329,3 +329,31 @@ async def test_vacuum_clean_segments_default_power_mode(reported, expected):
             }
         }
     )
+
+
+@pytest.mark.asyncio
+async def test_vacuum_clean_zones_top_level_fan_speed_override():
+    """Top-level fan_speed in clean_zones overrides zone defaults unless per-zone set."""
+    client, api_appliance = _purei9_client({})
+
+    await client.vacuum_send_command(
+        "pnc_vac",
+        "clean_zones",
+        {
+            "map": "Ground floor",
+            "fan_speed": "quiet",
+            "zones": ["Kitchen", {"zone": "Hall", "fan_speed": "power"}],
+        },
+    )
+
+    api_appliance.send_command.assert_awaited_once_with(
+        {
+            "CustomPlay": {
+                "persistentMapId": "map_1",
+                "zones": [
+                    {"zoneId": "kitchen", "powerMode": 1},
+                    {"zoneId": "hall", "powerMode": 3},
+                ],
+            }
+        }
+    )
