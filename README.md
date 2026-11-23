@@ -33,7 +33,8 @@ A custom component designed for [Home Assistant](https://www.home-assistant.io) 
 - Electrolux UltimateHome 900 Air Purifier with heater ("Fuji")
     - EP91-67UGA (sold in Taiwan as 冷暖空氣清淨機; see [MANUAL.md](MANUAL.md#fuji-air-purifier-with-heater))
 
-- Electrolux PUREi9 Vacuum Robot
+- Electrolux PURE-Series Vacuum Robots
+    - PUREi8
     - PUREi9
     - PUREi9.2
 
