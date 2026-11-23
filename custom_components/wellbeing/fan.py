@@ -5,13 +5,14 @@ import math
 
 from homeassistant.components.fan import FanEntity, FanEntityFeature
 from homeassistant.const import Platform
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util.percentage import (
     percentage_to_ranged_value,
     ranged_value_to_percentage,
 )
 
 from . import WellbeingDataUpdateCoordinator
-from .api import WorkMode
+from .api import Model, WorkMode
 from .const import DOMAIN
 from .entity import WellbeingEntity
 
@@ -80,6 +81,16 @@ class WellbeingFan(WellbeingEntity, FanEntity):
         _LOGGER.debug(f"percentage - speed: {speed} percentage: {percentage}")
         return percentage
 
+    async def _ensure_pm700_manual(self) -> None:
+        """Wait for the Pure Multi 700 to report Manual before setting speed."""
+        if self.get_appliance.model != Model.PM700:
+            return
+        if await self.api.wait_for_work_mode(self.pnc_id, WorkMode.MANUAL):
+            return
+        raise HomeAssistantError(
+            "Pure Multi 700 did not confirm Manual mode; fan speed was not sent"
+        )
+
     async def async_set_percentage(self, percentage: int) -> None:
         """Set the speed percentage of the fan."""
         self._speed = math.ceil(
@@ -104,6 +115,7 @@ class WellbeingFan(WellbeingEntity, FanEntity):
         if not is_manual:
             await self.async_set_preset_mode(WorkMode.MANUAL)
 
+        await self._ensure_pm700_manual()
         await self.api.set_fan_speed(self.pnc_id, self._speed)
 
         self.async_write_ha_state()
@@ -178,6 +190,7 @@ class WellbeingFan(WellbeingEntity, FanEntity):
         await self.api.set_work_mode(self.pnc_id, self._preset_mode)
 
         if self._preset_mode == WorkMode.MANUAL:
+            await self._ensure_pm700_manual()
             await self.api.set_fan_speed(self.pnc_id, self._speed)
 
         await self.async_refresh_later()
