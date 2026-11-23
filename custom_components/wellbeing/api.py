@@ -1659,6 +1659,32 @@ class WellbeingApiClient:
             f"Command '{command}' is not recognized for appliance with id {pnc_id}"
         )
 
+    async def wait_for_work_mode(
+        self, pnc_id: str, mode: WorkMode, delays: tuple[int, ...] = (4, 5, 6, 7)
+    ) -> bool:
+        """Wait for the appliance's reported mode after a mode change.
+
+        Command acknowledgement may precede physical mode transition. Only
+        poll the affected appliance, and return immediately if already set.
+        """
+        appliance = self._api_appliances.get(pnc_id)
+        if appliance is None:
+            return False
+
+        for delay in (0, *delays):
+            if delay:
+                await asyncio.sleep(delay)
+                await appliance.async_update()
+            reported = appliance.state.get("Workmode")
+            if isinstance(reported, str) and reported.casefold() == mode.value.casefold():
+                return True
+
+        _LOGGER.warning(
+            "Appliance %s did not confirm Workmode %s after %s seconds",
+            pnc_id, mode.value, sum(delays),
+        )
+        return False
+
     async def set_fan_speed(self, pnc_id: str, level: int):
         data = {"Fanspeed": level}
         appliance = self._api_appliances.get(pnc_id, None)
